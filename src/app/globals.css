@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-midnight-navy: #091E2C;
+  --color-deep-ocean: #103B48;
+  --color-primary-teal: #0B766E;
+  --color-emerald-accent: #159B82;
+  --color-aqua-accent: #63DEC2;
+  --color-warm-canvas: #F4F7F6;
+  --color-primary-text: #142D36;
+  --color-secondary-text: #60747A;
+  --color-safety-amber: #ECAF42;
+  --color-critical-coral: #D9534F;
+  --color-soft-border: #DBE6E2;
+}
+
+:root {
+  --background: #F4F7F6;
+  --foreground: #142D36;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.hero-gradient {
+  background: linear-gradient(
+    125deg,
+    #091E2C 0%,
+    #103B48 43%,
+    #0B766E 76%,
+    #159B82 100%
+  );
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid #DBE6E2;
+}
+
+.dark-glass-panel {
+  background: rgba(9, 30, 44, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 222, 194, 0.2);
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 3px solid #0B766E;
+  outline-offset: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

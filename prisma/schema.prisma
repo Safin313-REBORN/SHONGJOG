@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model AssistanceRequest {
+  id                  String         @id
+  status              String         // pending_review, matching, assigned, en_route, arrived, completed, cancelled
+  urgency             String         // routine, urgent, critical, needs_human_review
+  language            String         // bn, en, banglish
+  groupSize           Int            @default(1)
+  rawDescription      String
+  approximateLocation String?
+  latitude            Float?
+  longitude           Float?
+  contactName         String?
+  contactPhone        String?
+  consentGiven        Boolean        @default(true)
+  aiExtractionJson    String?        // serialized AIAnalysis
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  supportNeeds        SupportNeed[]
+  assignment          Assignment?
+  timelineEvents      CaseTimeline[]
+}
+
+model SupportNeed {
+  id         String            @id @default(cuid())
+  requestId  String
+  needType   String            // wheelchair_transport, step_free_access, guided_assistance, visual_communication, sign_language, power_equipment, caregiver_accompaniment, older_adult_assistance, cognitive_support, other
+  priority   String            @default("mandatory")
+  notes      String?
+
+  request    AssistanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id                 String             @id
+  resourceType       String             // vehicle, shelter, responder, equipment
+  name               String
+  verificationStatus String             // verified, partner_verified, community_reported, unverified, expired
+  isActive           Boolean            @default(true)
+  totalCapacity      Int                @default(1)
+  reservedCapacity   Int                @default(0)
+  currentOccupancy   Int                @default(0)
+  latitude           Float
+  longitude          Float
+  contactInfo        String?
+  notes              String?
+  verificationSource String?
+  lastVerifiedAt     DateTime?
+
+  vehicleDetails     VehicleDetail?
+  shelterDetails     ShelterDetail?
+  responderDetails   ResponderDetail?
+  assignmentsAsVeh   Assignment[]       @relation("VehicleAssignments")
+  assignmentsAsShlt  Assignment[]       @relation("ShelterAssignments")
+  assignmentsAsResp  Assignment[]       @relation("ResponderAssignments")
+  reservations       Reservation[]
+}
+
+model VehicleDetail {
+  id                   String   @id @default(cuid())
+  resourceId           String   @unique
+  vehicleType          String   // accessible_van, ambulance, boat, microbus, auto_rickshaw
+  wheelchairAccessible Boolean  @default(false)
+  wheelchairCapacity   Int      @default(0)
+  stretcherCapable     Boolean  @default(false)
+  driverName           String?
+
+  resource             Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model ShelterDetail {
+  id                  String   @id @default(cuid())
+  resourceId          String   @unique
+  stepFreeAccess      Boolean  @default(false)
+  rampAvailable       Boolean  @default(false)
+  accessibleToilets   Boolean  @default(false)
+  powerBackup         Boolean  @default(false)
+  separateFemaleSpace Boolean  @default(false)
+  managerName         String?
+
+  resource            Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model ResponderDetail {
+  id             String   @id @default(cuid())
+  resourceId     String   @unique
+  organization   String
+  badgeNumber    String?
+  skillsJson     String   // e.g. ["first_aid", "mobility_support", "sign_language", "guided_assistance"]
+  currentStatus  String   @default("available") // available, en_route, busy, off_duty
+
+  resource       Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model Assignment {
+  id                    String            @id
+  requestId             String            @unique
+  vehicleId             String?
+  shelterId             String?
+  responderId           String?
+  status                String            // assigned, accepted, declined, in_progress, arrived, completed, failed
+  assignedByCoordinator String
+  declineReason         String?
+  assignedAt            DateTime          @default(now())
+  acceptedAt            DateTime?
+  arrivedAt             DateTime?
+  completedAt           DateTime?
+
+  request               AssistanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  vehicle               Resource?         @relation("VehicleAssignments", fields: [vehicleId], references: [id])
+  shelter               Resource?         @relation("ShelterAssignments", fields: [shelterId], references: [id])
+  responder             Resource?         @relation("ResponderAssignments", fields: [responderId], references: [id])
+}
+
+model Reservation {
+  id         String   @id @default(cuid())
+  resourceId String
+  requestId  String
+  seatsCount Int      @default(1)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model CaseTimeline {
+  id          String            @id @default(cuid())
+  requestId   String
+  eventType   String            // created, ai_analyzed, matching_searched, assigned, accepted, status_changed, arrived, completed, note_added
+  actorRole   String            // citizen, ai_engine, coordinator, responder, system
+  actorName   String
+  detailsJson String?
+  timestamp   DateTime          @default(now())
+
+  request     AssistanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model AlertEvent {
+  id               String   @id @default(cuid())
+  eventCode        String   // e.g. "FL-2026-DACOPE-07"
+  title            String
+  hazardType       String   // cyclone, coastal_flood, tidal_surge, embankment_breach
+  severityLevel    String   // warning, danger, great_danger
+  signalNumber     Int      @default(7) // Bangladesh Met Department Signal 1-10
+  affectedUpazila  String   // Dacope, Khulna
+  affectedDistrict String   // Khulna
+  issuedAt         DateTime @default(now())
+  isActive         Boolean  @default(true)
+  metadataJson     String?
+}

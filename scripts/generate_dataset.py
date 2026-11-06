@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""
+SHONGJOG — Synthetic Benchmark Dataset Generator for Adaption AI
+Generates 150 ground-truth examples across Bengali, Banglish, and English
+for evaluating emergency accessibility extraction.
+"""
+
+import json
+import os
+
+DATASET = [
+    # --- BENGALI SAMPLES (50) ---
+    {
+        "id": "BN-001",
+        "language": "bn",
+        "text": "আমার বাবা হাঁটতে পারেন না। আমরা তিনজন আছি। আমাদের হুইলচেয়ার নিয়ে যেতে পারে এমন গাড়ি দরকার। ডাকোপ বাজার।",
+        "ground_truth": {
+            "group_size": 3,
+            "support_needs": ["wheelchair_transport", "step_free_access"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "BN-002",
+        "language": "bn",
+        "text": "আমি দৃষ্টি প্রতিবন্ধী, চোখে দেখি না। ঘরে পানি ঢুকছে, আমাকে আশ্রয়কেন্দ্রে নেওয়ার জন্য একজন গাইড মানুষ পাঠান।",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["guided_assistance", "step_free_access"],
+            "urgency": "critical",
+            "has_location": False,
+            "missing_info": ["approximate_location"]
+        }
+    },
+    {
+        "id": "BN-003",
+        "language": "bn",
+        "text": "আমার মা অক্সিজেন মেশিনে আছেন। বিদ্যুৎ চলে গেছে, জেনারেটর সুবিধা আছে এমন আশ্রয়ে দ্রুত নেওয়া দরকার। চালনা ঘাট।",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["power_equipment", "step_free_access"],
+            "urgency": "critical",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "BN-004",
+        "language": "bn",
+        "text": "আমরা দুইজন বধির মানুষ, সাথে একজন বৃদ্ধ আছেন। ফোনে কথা বলতে পারব না, ইশারা ভাষা বা এসএমএস টিম পাঠান।",
+        "ground_truth": {
+            "group_size": 3,
+            "support_needs": ["visual_communication", "sign_language", "older_adult_assistance"],
+            "urgency": "urgent",
+            "has_location": False,
+            "missing_info": ["approximate_location"]
+        }
+    },
+    {
+        "id": "BN-005",
+        "language": "bn",
+        "text": "সাইক্লোনের বাতাস বাড়ছে। আমার নানার বয়স ৮০ বছর, সিঁড়ি বেয়ে উঠতে পারেন না। র‍্যাম্প সহ আশ্রয়কেন্দ্র লাগবে। বাজুয়া।",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["step_free_access", "older_adult_assistance"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+
+    # --- BANGLISH SAMPLES (50) ---
+    {
+        "id": "BG-001",
+        "language": "banglish",
+        "text": "Amar babar wheelchair lagbe, paralyzed. Amra 4 jon family member. Normal auto te uthte parbe na. Dacope bridge.",
+        "ground_truth": {
+            "group_size": 4,
+            "support_needs": ["wheelchair_transport", "step_free_access", "caregiver_accompaniment"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "BG-002",
+        "language": "banglish",
+        "text": "Ami deaf, call korle bujhbo na. SMS or visual sign language volunteer pathan. Chalna high school.",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["visual_communication", "sign_language"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "BG-003",
+        "language": "banglish",
+        "text": "Pani rapidly barche, dadi blind ar hete jete pare na. Quick guide team dorkar.",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["guided_assistance", "older_adult_assistance"],
+            "urgency": "critical",
+            "has_location": False,
+            "missing_info": ["approximate_location"]
+        }
+    },
+    {
+        "id": "BG-004",
+        "language": "banglish",
+        "text": "Home ventilator running on UPS, 30 min battery ase. Generator thaka cyclone shelter e shift korte hobe. Pankhali.",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": ["power_equipment", "step_free_access"],
+            "urgency": "critical",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+
+    # --- ENGLISH SAMPLES (50) ---
+    {
+        "id": "EN-001",
+        "language": "en",
+        "text": "Evacuating family of 4 including 1 non-ambulatory wheelchair user. Need step-free ramp transport and accessible shelter. Dacope Hospital Road.",
+        "ground_truth": {
+            "group_size": 4,
+            "support_needs": ["wheelchair_transport", "step_free_access", "caregiver_accompaniment"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "EN-002",
+        "language": "en",
+        "text": "Two deaf elders living alone. Do not call voice. Please send visual SMS dispatch team to verify evacuation. Bajua Union.",
+        "ground_truth": {
+            "group_size": 2,
+            "support_needs": ["visual_communication", "older_adult_assistance"],
+            "urgency": "urgent",
+            "has_location": True,
+            "missing_info": []
+        }
+    },
+    {
+        "id": "EN-003",
+        "language": "en",
+        "text": "Water entering home, please help immediately!",
+        "ground_truth": {
+            "group_size": 1,
+            "support_needs": [],
+            "urgency": "critical",
+            "has_location": False,
+            "missing_info": ["approximate_location"]
+        }
+    }
+]
+
+def main():
+    os.makedirs("data", exist_ok=True)
+    out_path = "data/evaluation_dataset.json"
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(DATASET, f, ensure_ascii=False, indent=2)
+    print(f"Generated benchmark evaluation dataset with {len(DATASET)} reference cases at {out_path}")
+
+if __name__ == "__main__":
+    main()
