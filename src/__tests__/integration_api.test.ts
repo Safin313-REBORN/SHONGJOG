@@ -179,3 +179,4 @@ describe("End-to-End API Integration & Lifecycle State Machine", () => {
     expect(finalShl?.currentOccupancy).toBeGreaterThan(120); // Baseline was 120
   });
 });
+

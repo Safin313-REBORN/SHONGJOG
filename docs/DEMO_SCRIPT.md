@@ -85,3 +85,4 @@
 - **Presenter (Voiceover):**
   > "In an emergency, seconds matter—but dignity and accessibility matter just as much. 
   > SHONGJOG: Because no one should be left behind when help could have reached them. Thank you."
+
