@@ -178,36 +178,36 @@ export default function ResponderPage() {
   const activeResponder = responders.find((r) => r.id === selectedResponderId);
 
   return (
-    <div className="min-h-screen bg-[#F4F7F6] py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#F4F7F6] py-6 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-2xl mx-auto space-y-5">
-        {/* Header Breadcrumbs */}
-        <div className="flex items-center justify-between">
+        {/* Header Breadcrumbs & Classification */}
+        <div className="flex items-center justify-between pb-1">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0B766E] hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0B766E] hover:text-[#085852] transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Overview</span>
+            <span>Return to Portal Overview</span>
           </Link>
-          <span className="text-xs font-mono font-semibold text-[#D9534F] bg-[#D9534F]/10 px-2 py-0.5 rounded">
-            FIELD RESPONDER APP (MOBILE-FIRST)
+          <span className="text-xs font-mono font-bold text-[#D9534F] bg-[#D9534F]/10 border border-[#D9534F]/20 px-2.5 py-1 rounded">
+            FIELD RESPONDER APP · TACTICAL TERMINAL
           </span>
         </div>
 
         {/* Responder Identity Switcher Card */}
-        <div className="bg-[#091E2C] text-white p-4 rounded-2xl border border-[#103B48] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-[#091E2C] text-white p-4 sm:p-5 rounded-xl border border-[#103B48] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B766E] flex items-center justify-center text-[#63DEC2] shrink-0">
+            <div className="w-11 h-11 rounded-lg bg-[#0B766E] flex items-center justify-center text-[#63DEC2] shrink-0 border border-[#159B82]/30">
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] text-[#63DEC2] uppercase font-mono tracking-wider">
+              <div className="text-[10px] text-[#63DEC2] uppercase font-mono tracking-wider font-bold">
                 Active Responder Unit
               </div>
-              <h1 className="font-bold text-sm sm:text-base text-white">
+              <h1 className="font-extrabold text-base text-white tracking-tight">
                 {activeResponder?.name || "Field Volunteer Squad"}
               </h1>
-              <div className="text-[11px] text-[#DBE6E2]/70">
+              <div className="text-xs text-[#DBE6E2]/70">
                 {activeResponder?.organization}
               </div>
             </div>
@@ -217,7 +217,7 @@ export default function ResponderPage() {
             <select
               value={selectedResponderId}
               onChange={(e) => setSelectedResponderId(e.target.value)}
-              className="bg-[#103B48] text-white border border-[#0B766E] text-xs rounded-xl p-2 font-medium focus:ring-1 focus:ring-[#63DEC2] focus:outline-none"
+              className="w-full sm:w-auto bg-[#103B48] text-white border border-[#0B766E] text-xs rounded-lg p-2.5 font-medium focus:ring-1 focus:ring-[#63DEC2] focus:outline-none"
             >
               {responders.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -237,18 +237,18 @@ export default function ResponderPage() {
 
         {/* Loading state */}
         {loading ? (
-          <div className="bg-white p-8 rounded-2xl border border-[#DBE6E2] text-center text-xs text-[#60747A] shadow-sm">
-            Fetching active field assignment...
+          <div className="bg-white p-8 rounded-xl border border-[#DBE6E2] text-center text-xs text-[#60747A] shadow-sm font-mono">
+            Synchronizing tactical dispatch assignments...
           </div>
         ) : !assignment ? (
           /* Empty state */
-          <div className="bg-white p-8 rounded-2xl border border-[#DBE6E2] text-center space-y-3 shadow-sm">
-            <div className="w-12 h-12 rounded-xl bg-[#159B82]/10 text-[#159B82] mx-auto flex items-center justify-center">
+          <div className="bg-white p-8 rounded-xl border border-[#DBE6E2] text-center space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-[#159B82]/10 text-[#159B82] border border-[#159B82]/20 mx-auto flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h2 className="text-base font-bold text-[#142D36]">No Active Assignment Assigned</h2>
-            <p className="text-xs text-[#60747A] max-w-sm mx-auto">
-              This response team is currently available on standby. When the emergency coordinator assigns a verified evacuation request, it will appear here immediately.
+            <p className="text-xs text-[#60747A] max-w-sm mx-auto leading-relaxed">
+              This response team is currently available on standby. When the emergency coordinator assigns a verified evacuation request, it will appear here immediately with route constraints.
             </p>
             <div className="pt-2">
               <Link
@@ -264,7 +264,7 @@ export default function ResponderPage() {
           /* Active Assignment Briefing */
           <div className="space-y-4">
             {/* Top Briefing Card */}
-            <div className="bg-white p-6 rounded-2xl border border-[#DBE6E2] shadow-sm space-y-5">
+            <div className="bg-white p-6 rounded-xl border border-[#DBE6E2] shadow-sm space-y-5">
               <div className="flex items-start justify-between gap-3 border-b border-[#DBE6E2] pb-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export default function ResponderPage() {
                       {assignment.requestId}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider font-mono ${
                         assignment.request.urgency === "critical"
                           ? "bg-[#D9534F] text-white"
                           : "bg-[#ECAF42] text-[#091E2C]"
@@ -281,13 +281,13 @@ export default function ResponderPage() {
                       {assignment.request.urgency}
                     </span>
                   </div>
-                  <h2 className="text-lg font-black text-[#142D36] mt-1">
+                  <h2 className="text-lg font-black text-[#142D36] mt-1 tracking-tight">
                     Evacuation Mission Briefing
                   </h2>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs bg-[#103B48] text-[#63DEC2] font-mono px-2 py-0.5 rounded uppercase font-bold">
+                  <span className="text-xs bg-[#103B48] text-[#63DEC2] font-mono px-2.5 py-1 rounded uppercase font-bold border border-[#0B766E]/40">
                     {assignment.status.toUpperCase()}
                   </span>
                 </div>
@@ -295,37 +295,37 @@ export default function ResponderPage() {
 
               {/* Data-Minimized Instructions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-[#F4F7F6] border border-[#DBE6E2]">
-                  <span className="text-[#60747A] block font-semibold">Location / Landmark:</span>
-                  <div className="font-bold text-[#142D36] flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#0B766E] shrink-0" />
+                <div className="p-3.5 rounded-lg bg-[#F4F7F6] border border-[#DBE6E2]">
+                  <span className="text-[#60747A] block font-mono text-[10px] uppercase font-bold">Rendezvous Landmark</span>
+                  <div className="font-bold text-[#142D36] flex items-center gap-1.5 mt-1 text-sm">
+                    <MapPin className="w-4 h-4 text-[#0B766E] shrink-0" />
                     <span>{assignment.request.approximateLocation}</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#F4F7F6] border border-[#DBE6E2]">
-                  <span className="text-[#60747A] block font-semibold">Evacuation Headcount:</span>
-                  <div className="font-bold text-[#142D36] flex items-center gap-1 mt-0.5">
-                    <Users className="w-3.5 h-3.5 text-[#0B766E] shrink-0" />
+                <div className="p-3.5 rounded-lg bg-[#F4F7F6] border border-[#DBE6E2]">
+                  <span className="text-[#60747A] block font-mono text-[10px] uppercase font-bold">Evacuees Headcount</span>
+                  <div className="font-bold text-[#142D36] flex items-center gap-1.5 mt-1 text-sm font-mono">
+                    <Users className="w-4 h-4 text-[#0B766E] shrink-0" />
                     <span>{assignment.request.groupSize} Person(s)</span>
                   </div>
                 </div>
 
                 {assignment.vehicle && (
-                  <div className="p-3 rounded-xl bg-[#F4F7F6] border border-[#DBE6E2]">
-                    <span className="text-[#60747A] block font-semibold">Allocated Transport:</span>
-                    <div className="font-bold text-[#142D36] flex items-center gap-1 mt-0.5">
-                      <Truck className="w-3.5 h-3.5 text-[#0B766E] shrink-0" />
+                  <div className="p-3.5 rounded-lg bg-[#F4F7F6] border border-[#DBE6E2]">
+                    <span className="text-[#60747A] block font-mono text-[10px] uppercase font-bold">Allocated Transport</span>
+                    <div className="font-bold text-[#142D36] flex items-center gap-1.5 mt-1 text-sm">
+                      <Truck className="w-4 h-4 text-[#0B766E] shrink-0" />
                       <span>{assignment.vehicle.name}</span>
                     </div>
                   </div>
                 )}
 
                 {assignment.shelter && (
-                  <div className="p-3 rounded-xl bg-[#F4F7F6] border border-[#DBE6E2]">
-                    <span className="text-[#60747A] block font-semibold">Target Safe Shelter:</span>
-                    <div className="font-bold text-[#142D36] flex items-center gap-1 mt-0.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#159B82] shrink-0" />
+                  <div className="p-3.5 rounded-lg bg-[#F4F7F6] border border-[#DBE6E2]">
+                    <span className="text-[#60747A] block font-mono text-[10px] uppercase font-bold">Target Safe Shelter</span>
+                    <div className="font-bold text-[#142D36] flex items-center gap-1.5 mt-1 text-sm">
+                      <ShieldCheck className="w-4 h-4 text-[#159B82] shrink-0" />
                       <span>{assignment.shelter.name}</span>
                     </div>
                   </div>
@@ -333,15 +333,15 @@ export default function ResponderPage() {
               </div>
 
               {/* Required Functional Accommodations */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold text-[#142D36]">
-                  Critical Field Accommodations:
+              <div className="space-y-1.5 pt-1">
+                <span className="text-xs font-bold text-[#142D36] block">
+                  Mandatory Functional Accommodations:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {assignment.request.supportNeeds.map((n, i) => (
                     <span
                       key={i}
-                      className="text-xs bg-[#0B766E]/10 text-[#0B766E] font-bold px-2.5 py-1 rounded-lg border border-[#0B766E]/20"
+                      className="text-xs bg-[#0B766E]/10 text-[#0B766E] font-bold px-2.5 py-1 rounded-md border border-[#0B766E]/20"
                     >
                       {n.needType.replace(/_/g, " ")}
                     </span>
@@ -350,14 +350,14 @@ export default function ResponderPage() {
               </div>
 
               {/* Privacy Notice */}
-              <div className="p-3 rounded-xl bg-white border border-[#DBE6E2] text-[11px] text-[#60747A] leading-relaxed">
-                <strong>Data Minimization Notice:</strong> Only operational navigation landmarks and physical handling instructions are displayed to preserve citizen privacy.
+              <div className="p-3.5 rounded-lg bg-[#F4F7F6] border border-[#DBE6E2] text-[11px] text-[#60747A] leading-relaxed">
+                <strong className="text-[#142D36]">Privacy Protocol:</strong> In compliance with humanitarian data minimization standards, only operational rendezvous landmarks and physical accommodation requirements are visible to field responders.
               </div>
 
               {/* State Machine Action Controls */}
               <div className="pt-2 border-t border-[#DBE6E2] space-y-2">
                 <span className="text-xs font-bold text-[#142D36] block">
-                  Field Response Actions:
+                  Tactical Response Actions:
                 </span>
 
                 {/* 1. Accept / Decline (When status is "assigned") */}
@@ -367,7 +367,7 @@ export default function ResponderPage() {
                       type="button"
                       disabled={actionLoading}
                       onClick={() => handleAction("accept")}
-                      className="bg-[#0B766E] hover:bg-[#159B82] text-white py-3 rounded-xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5"
+                      className="bg-[#0B766E] hover:bg-[#085852] text-white py-3 rounded-lg font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
                       <span>Accept Assignment</span>
@@ -376,7 +376,7 @@ export default function ResponderPage() {
                       type="button"
                       disabled={actionLoading}
                       onClick={() => setShowDeclineModal(true)}
-                      className="bg-[#D9534F]/10 hover:bg-[#D9534F]/20 text-[#D9534F] py-3 rounded-xl font-bold text-xs border border-[#D9534F]/30 transition flex items-center justify-center gap-1.5"
+                      className="bg-[#D9534F]/10 hover:bg-[#D9534F]/20 text-[#D9534F] py-3 rounded-lg font-bold text-xs border border-[#D9534F]/30 transition flex items-center justify-center gap-1.5"
                     >
                       <XCircle className="w-4 h-4" />
                       <span>Decline with Reason</span>
@@ -390,7 +390,7 @@ export default function ResponderPage() {
                     type="button"
                     disabled={actionLoading}
                     onClick={() => handleAction("en_route")}
-                    className="w-full bg-[#0B766E] hover:bg-[#159B82] text-white py-3.5 rounded-xl font-bold text-xs shadow transition flex items-center justify-center gap-2"
+                    className="w-full bg-[#0B766E] hover:bg-[#085852] text-white py-3.5 rounded-lg font-bold text-xs shadow-sm transition flex items-center justify-center gap-2"
                   >
                     <Navigation className="w-4 h-4" />
                     <span>Start Response (Mark En Route)</span>
@@ -403,7 +403,7 @@ export default function ResponderPage() {
                     type="button"
                     disabled={actionLoading}
                     onClick={() => handleAction("arrived")}
-                    className="w-full bg-[#ECAF42] hover:bg-[#d89f36] text-[#091E2C] py-3.5 rounded-xl font-bold text-xs shadow transition flex items-center justify-center gap-2"
+                    className="w-full bg-[#ECAF42] hover:bg-[#C99126] text-[#091E2C] py-3.5 rounded-lg font-bold text-xs shadow-sm transition flex items-center justify-center gap-2"
                   >
                     <MapPin className="w-4 h-4" />
                     <span>Mark Arrived at Citizen Location</span>
@@ -417,7 +417,7 @@ export default function ResponderPage() {
                       type="button"
                       disabled={actionLoading}
                       onClick={() => handleAction("complete")}
-                      className="bg-[#159B82] hover:bg-[#0e7c67] text-white py-3.5 rounded-xl font-bold text-xs shadow transition flex items-center justify-center gap-2"
+                      className="bg-[#159B82] hover:bg-[#0e7c67] text-white py-3.5 rounded-lg font-bold text-xs shadow-sm transition flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Confirm Assistance Delivered</span>
@@ -426,7 +426,7 @@ export default function ResponderPage() {
                       type="button"
                       disabled={actionLoading}
                       onClick={() => handleAction("unable_to_assist", "Road flooded / inaccessible")}
-                      className="bg-[#D9534F]/10 hover:bg-[#D9534F]/20 text-[#D9534F] py-3.5 rounded-xl font-bold text-xs border border-[#D9534F]/30 transition flex items-center justify-center gap-2"
+                      className="bg-[#D9534F]/10 hover:bg-[#D9534F]/20 text-[#D9534F] py-3.5 rounded-lg font-bold text-xs border border-[#D9534F]/30 transition flex items-center justify-center gap-2"
                     >
                       <AlertTriangle className="w-4 h-4" />
                       <span>Report Unable to Assist</span>
@@ -436,22 +436,22 @@ export default function ResponderPage() {
 
                 {/* Completed state */}
                 {assignment.status === "completed" && (
-                  <div className="p-3.5 rounded-xl bg-[#159B82]/10 border border-[#159B82] text-[#159B82] font-bold text-xs text-center flex items-center justify-center gap-2">
+                  <div className="p-3.5 rounded-lg bg-[#159B82]/10 border border-[#159B82] text-[#159B82] font-bold text-xs text-center flex items-center justify-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Assistance confirmed delivered safely to shelter.</span>
+                    <span>Assistance confirmed delivered safely to shelter. Mission completed.</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Event Timeline Audit Trail */}
-            <div className="bg-white p-5 rounded-2xl border border-[#DBE6E2] shadow-sm space-y-3">
+            <div className="bg-white p-5 rounded-xl border border-[#DBE6E2] shadow-sm space-y-3">
               <div className="flex items-center justify-between text-xs font-bold text-[#142D36]">
-                <span>Case Event Timeline (Audit Log)</span>
+                <span>Case Event Timeline (Immutable Audit Log)</span>
                 <Clock className="w-4 h-4 text-[#60747A]" />
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 {assignment.request.timelineEvents.map((ev) => (
                   <div key={ev.id} className="flex items-start gap-3 text-xs">
                     <div className="w-2 h-2 rounded-full bg-[#0B766E] shrink-0 mt-1.5" />
@@ -478,25 +478,25 @@ export default function ResponderPage() {
         {/* Decline Modal */}
         {showDeclineModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="bg-white rounded-xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-[#DBE6E2]">
               <h3 className="font-bold text-sm text-[#142D36]">
                 Reason for Declining Assignment
               </h3>
-              <p className="text-xs text-[#60747A]">
-                Declining immediately frees the reserved vehicle and alerts the coordinator to re-match.
+              <p className="text-xs text-[#60747A] leading-relaxed">
+                Declining immediately frees the reserved vehicle in the matching pool and notifies the emergency coordinator to re-dispatch another unit.
               </p>
               <textarea
                 rows={3}
                 value={declineReason}
                 onChange={(e) => setDeclineReason(e.target.value)}
                 placeholder="e.g. Engine breakdown, road washed out, or vehicle occupied with previous emergency..."
-                className="w-full p-2.5 rounded-xl border border-[#DBE6E2] text-xs focus:ring-1 focus:ring-[#D9534F] focus:outline-none"
+                className="w-full p-2.5 rounded-lg border border-[#DBE6E2] text-xs focus:ring-1 focus:ring-[#D9534F] focus:outline-none"
               />
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-1 border-t border-[#DBE6E2]">
                 <button
                   type="button"
                   onClick={() => setShowDeclineModal(false)}
-                  className="px-3 py-2 text-xs font-semibold text-[#60747A]"
+                  className="px-3 py-2 text-xs font-semibold text-[#60747A] hover:text-[#142D36]"
                 >
                   Cancel
                 </button>
@@ -504,7 +504,7 @@ export default function ResponderPage() {
                   type="button"
                   disabled={actionLoading || !declineReason.trim()}
                   onClick={() => handleAction("decline", declineReason)}
-                  className="bg-[#D9534F] hover:bg-[#c4413d] text-white px-4 py-2 rounded-xl text-xs font-bold transition"
+                  className="bg-[#D9534F] hover:bg-[#B33936] text-white px-4 py-2 rounded-lg text-xs font-bold transition"
                 >
                   Confirm Decline
                 </button>

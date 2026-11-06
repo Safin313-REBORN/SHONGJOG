@@ -70,65 +70,65 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#091E2C] text-white border-b border-[#103B48] shadow-md">
+    <header className="sticky top-0 z-50 bg-[#091E2C] text-white border-b border-[#103B48]">
       {/* Alert Ticker Bar */}
-      <div className="bg-[#103B48] px-4 py-1 text-xs border-b border-[#0B766E]/40 flex items-center justify-between">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <span className="inline-flex items-center gap-1 bg-[#D9534F] text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider animate-pulse">
-            <AlertTriangle className="w-3 h-3" />
+      <div className="bg-[#103B48] px-4 py-1.5 text-xs border-b border-[#0B766E]/30 flex items-center justify-between">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          <span className="inline-flex items-center gap-1.5 bg-[#D9534F] text-white font-semibold px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" />
             {t.demo_badge}
           </span>
-          <span className="text-[#63DEC2] font-medium truncate">
+          <span className="text-[#63DEC2] font-medium truncate text-xs">
             {t.active_alert_banner}
           </span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleResetDemo}
             disabled={isResetting}
-            className="flex items-center gap-1 text-[11px] bg-[#0B766E]/60 hover:bg-[#0B766E] text-white px-2 py-0.5 rounded transition focus:outline-none focus:ring-1 focus:ring-[#63DEC2]"
+            className="flex items-center gap-1.5 text-[11px] bg-white/5 hover:bg-white/10 text-[#DBE6E2] hover:text-white px-2.5 py-1 rounded-md border border-white/10 transition focus:outline-none focus:ring-1 focus:ring-[#63DEC2]"
             title="Reset database to synthetic demo baseline"
           >
             {resetSuccess ? (
               <>
                 <CheckCircle2 className="w-3 h-3 text-[#63DEC2]" />
-                <span>Reset Done</span>
+                <span className="text-[#63DEC2] font-medium">Reset Complete</span>
               </>
             ) : (
               <>
                 <RotateCcw className={`w-3 h-3 ${isResetting ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{t.reset_demo}</span>
+                <span className="hidden sm:inline font-medium">{t.reset_demo}</span>
               </>
             )}
           </button>
           <button
             onClick={toggleLanguage}
-            className="flex items-center gap-1 text-[11px] bg-white/10 hover:bg-white/20 text-[#63DEC2] px-2 py-0.5 rounded transition font-semibold"
+            className="flex items-center gap-1.5 text-[11px] bg-[#0B766E]/40 hover:bg-[#0B766E] text-white px-2.5 py-1 rounded-md border border-[#0B766E]/60 transition font-semibold"
             aria-label="Toggle language English or Bengali"
           >
-            <Globe className="w-3 h-3" />
+            <Globe className="w-3 h-3 text-[#63DEC2]" />
             <span>{lang === "en" ? "বাংলা" : "English"}</span>
           </button>
         </div>
       </div>
 
       {/* Main Nav Bar */}
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-[#63DEC2] rounded-lg p-1">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B766E] to-[#159B82] flex items-center justify-center text-white shadow-inner border border-[#63DEC2]/30">
-            <ShieldCheck className="w-6 h-6 text-[#63DEC2]" />
+        <Link href="/" className="flex items-center gap-3 group focus:outline-none focus:ring-1 focus:ring-[#63DEC2] rounded-lg p-1">
+          <div className="w-9 h-9 rounded-lg bg-[#0B766E] flex items-center justify-center text-white border border-[#159B82]">
+            <ShieldCheck className="w-5 h-5 text-[#63DEC2]" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-lg tracking-tight text-white group-hover:text-[#63DEC2] transition">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-base tracking-tight text-white group-hover:text-[#63DEC2] transition">
                 SHONGJOG
               </span>
-              <span className="text-xs bg-[#0B766E] text-[#63DEC2] px-1.5 py-0.2 rounded font-mono font-medium">
+              <span className="text-[11px] bg-[#103B48] text-[#63DEC2] px-1.5 py-0.5 rounded font-mono font-medium border border-[#0B766E]/40">
                 সংযোগ
               </span>
             </div>
-            <p className="text-[11px] text-[#DBE6E2]/70 leading-none truncate hidden sm:block">
+            <p className="text-[11px] text-[#DBE6E2]/70 leading-none truncate hidden sm:block mt-0.5">
               {t.brand_tagline}
             </p>
           </div>
@@ -143,15 +143,15 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${
                   link.highlight
-                    ? "bg-[#D9534F] hover:bg-[#c4413d] text-white shadow-sm ml-2"
+                    ? "bg-[#D9534F] hover:bg-[#c4413d] text-white font-semibold ml-2 shadow-sm"
                     : isActive
-                    ? "bg-[#103B48] text-[#63DEC2] border border-[#0B766E]"
+                    ? "bg-[#103B48] text-[#63DEC2] border border-[#0B766E]/60"
                     : "text-[#DBE6E2] hover:text-white hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{link.label}</span>
               </Link>
             );
@@ -162,10 +162,10 @@ export default function Navbar() {
         <div className="md:hidden flex items-center">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-[#DBE6E2] hover:text-white hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#63DEC2]"
+            className="p-2 text-[#DBE6E2] hover:text-white hover:bg-white/10 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#63DEC2]"
             aria-label="Toggle mobile menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </nav>
@@ -181,15 +181,15 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-base font-medium transition ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition ${
                   link.highlight
-                    ? "bg-[#D9534F] text-white"
+                    ? "bg-[#D9534F] text-white font-semibold"
                     : isActive
-                    ? "bg-[#103B48] text-[#63DEC2]"
+                    ? "bg-[#103B48] text-[#63DEC2] border border-[#0B766E]/60"
                     : "text-[#DBE6E2] hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
                 <span>{link.label}</span>
               </Link>
             );
