@@ -181,3 +181,5 @@ Read the annotated literature review at [`docs/RESEARCH.md`](docs/RESEARCH.md).
 - **Synthetic Personas:** All names, telephone numbers, and specific incident reports are entirely synthetic.
 - **Data Minimization:** No clinical diagnostic records are collected or shared. Responders receive only functional physical accommodation instructions.
 - **Human Accountability:** AI provides classification and hypothesis extraction; deterministic algorithms evaluate physical constraints; **authorized human coordinators make consequential dispatch decisions.**
+
+# SHONGJOG-PLATFORM-OPERATIONAL-DIRECTIVE-FOR-ANTIGRAVITY

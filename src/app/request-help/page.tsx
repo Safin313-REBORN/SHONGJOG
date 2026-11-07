@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useTranslation, formatNumber } from "@/lib/i18n";
 import {
-  AlertTriangle,
   ArrowRight,
   ArrowLeft,
   Mic,
@@ -15,15 +15,43 @@ import {
   Users,
   MapPin,
   Phone,
-  FileCheck,
   Send,
   WifiOff,
   Check,
-  ExternalLink,
 } from "lucide-react";
 import { NeedType, UrgencyLevel } from "@/lib/types";
 
+function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
+function getOnlineSnapshot() {
+  return navigator.onLine;
+}
+
+function getOnlineServerSnapshot() {
+  return true;
+}
+
+function subscribeSpeech() {
+  return () => {};
+}
+
+function getSpeechSnapshot() {
+  return typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+}
+
+function getSpeechServerSnapshot() {
+  return false;
+}
+
 export default function RequestHelpPage() {
+  const { lang } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Form state
@@ -38,12 +66,13 @@ export default function RequestHelpPage() {
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
+  const speechSupported = useSyncExternalStore(subscribeSpeech, getSpeechSnapshot, getSpeechServerSnapshot);
 
   // Network & submission state
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getOnlineServerSnapshot);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [offlineDraftSaved, setOfflineDraftSaved] = useState(false);
+  const [draftReference, setDraftReference] = useState("DRAFT-OFFLINE");
   const [submittedCase, setSubmittedCase] = useState<{
     id: string;
     status: string;
@@ -51,33 +80,41 @@ export default function RequestHelpPage() {
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const syncOfflineDraft = useCallback(async (draftData: Record<string, unknown>) => {
+    try {
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draftData),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        localStorage.removeItem("shongjog_offline_draft");
+        setOfflineDraftSaved(false);
+        setSubmittedCase({ id: json.case_reference, status: "pending_review" });
+        setStep(4);
+      }
+    } catch {
+      console.warn("Auto sync failed; keeping draft locally.");
+    }
+  }, []);
+
   // Track online status
   useEffect(() => {
-    setIsOnline(navigator.onLine);
     const handleOnline = () => {
-      setIsOnline(true);
       // Attempt auto sync if draft saved
       const saved = localStorage.getItem("shongjog_offline_draft");
       if (saved) {
         syncOfflineDraft(JSON.parse(saved));
       }
     };
-    const handleOffline = () => setIsOnline(false);
 
     window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    // Check speech recognition support
-    if (typeof window !== "undefined") {
-      const hasSpeech = "webkitSpeechRecognition" in window || "SpeechRecognition" in window;
-      setSpeechSupported(hasSpeech);
-    }
 
     return () => {
       window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [syncOfflineDraft]);
 
   // Web Speech API Voice Dictation
   const toggleSpeechRecognition = () => {
@@ -138,25 +175,6 @@ export default function RequestHelpPage() {
     setStep(3);
   };
 
-  const syncOfflineDraft = async (draftData: Record<string, unknown>) => {
-    try {
-      const res = await fetch("/api/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draftData),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        localStorage.removeItem("shongjog_offline_draft");
-        setOfflineDraftSaved(false);
-        setSubmittedCase({ id: json.case_reference, status: "pending_review" });
-        setStep(4);
-      }
-    } catch {
-      console.warn("Auto sync failed; keeping draft locally.");
-    }
-  };
-
   const handleSubmit = async () => {
     if (!consentGiven) {
       setErrorMsg("You must grant consent to share functional requirements with emergency coordinators.");
@@ -179,6 +197,8 @@ export default function RequestHelpPage() {
 
     // If device is offline, cache in localStorage/IndexedDB
     if (!navigator.onLine) {
+      const draftId = `DRAFT-${Math.floor(100000 + Math.random() * 900000)}`;
+      setDraftReference(draftId);
       localStorage.setItem("shongjog_offline_draft", JSON.stringify(payload));
       setOfflineDraftSaved(true);
       setIsSubmitting(false);
@@ -207,6 +227,8 @@ export default function RequestHelpPage() {
     } catch (err) {
       console.error("Submission failed:", err);
       // Cache as offline fallback draft
+      const draftId = `DRAFT-${Math.floor(100000 + Math.random() * 900000)}`;
+      setDraftReference(draftId);
       localStorage.setItem("shongjog_offline_draft", JSON.stringify(payload));
       setOfflineDraftSaved(true);
       setStep(4);
@@ -223,7 +245,12 @@ export default function RequestHelpPage() {
           <div className="bg-[#ECAF42] text-[#091E2C] px-4 py-3 rounded-xl border border-[#C99126] flex items-center gap-3 font-semibold text-xs shadow-sm">
             <WifiOff className="w-5 h-5 shrink-0" />
             <div>
-              <span className="font-bold">Offline Storage Active:</span> You are currently offline. You can still complete and save your request. It will be stored securely on this device and dispatched automatically once network connectivity is restored.
+              <span className="font-bold">
+                {lang === "bn" ? "অফলাইন স্টোরেজ সক্রিয়:" : "Offline Storage Active:"}
+              </span>{" "}
+              {lang === "bn"
+                ? "আপনি বর্তমানে অফলাইনে আছেন। আপনি আপনার অনুরোধ পূরণ ও সংরক্ষণ করতে পারবেন। নেটওয়ার্ক সংযোগ ফিরে এলে এটি স্বয়ংক্রিয়ভাবে সমন্বয়কারীর কাছে প্রেরিত হবে।"
+                : "You are currently offline. You can still complete and save your request. It will be stored securely on this device and dispatched automatically once network connectivity is restored."}
             </div>
           </div>
         )}
@@ -235,11 +262,11 @@ export default function RequestHelpPage() {
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0B766E] hover:text-[#085852] transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Return to Portal Overview</span>
+            <span>{lang === "bn" ? "পোর্টাল ওভারভিউতে ফিরে যান" : "Return to Portal Overview"}</span>
           </Link>
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#091E2C] text-[#63DEC2] text-[11px] font-mono font-medium border border-[#103B48]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#159B82]" />
-            CIVIL ACCESS INTAKE · SECURE TRANSMISSION
+            {lang === "bn" ? "নাগরিক প্রবেশাধিকার ইনটেক · নিরাপদ সঞ্চালন" : "CIVIL ACCESS INTAKE · SECURE TRANSMISSION"}
           </div>
         </div>
 
@@ -256,7 +283,7 @@ export default function RequestHelpPage() {
                     : "text-[#60747A] bg-[#F4F7F6] border-transparent"
                 }`}
               >
-                1. Describe Situation
+                1. {lang === "bn" ? "পরিস্থিতির বিবরণ" : "Describe Situation"}
               </div>
               <div
                 className={`py-2 px-3 rounded-lg border transition ${
@@ -267,7 +294,7 @@ export default function RequestHelpPage() {
                     : "text-[#60747A] bg-[#F4F7F6] border-transparent"
                 }`}
               >
-                2. Functional Needs
+                2. {lang === "bn" ? "কার্যকরী চাহিদা" : "Functional Needs"}
               </div>
               <div
                 className={`py-2 px-3 rounded-lg border transition ${
@@ -276,7 +303,7 @@ export default function RequestHelpPage() {
                     : "text-[#60747A] bg-[#F4F7F6] border-transparent"
                 }`}
               >
-                3. Review & Consent
+                3. {lang === "bn" ? "পর্যালোচনা ও সম্মতি" : "Review & Consent"}
               </div>
             </div>
           </div>
@@ -287,20 +314,22 @@ export default function RequestHelpPage() {
           <div className="bg-white p-6 sm:p-8 rounded-xl border border-[#DBE6E2] shadow-sm space-y-6">
             <div className="border-b border-[#DBE6E2] pb-4">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0B766E]">
-                Stage 1 of 3 · Incident Description
+                {lang === "bn" ? "ধাপ ১ / ৩ · পরিস্থিতির বিবরণ" : "Stage 1 of 3 · Incident Description"}
               </span>
               <h1 className="text-2xl font-extrabold text-[#142D36] mt-1 tracking-tight">
-                What is happening right now?
+                {lang === "bn" ? "এখন কী ঘটছে?" : "What is happening right now?"}
               </h1>
               <p className="text-xs text-[#60747A] mt-1.5 leading-relaxed">
-                Describe your current situation in everyday language. You can type in Bengali (বাংলা), Banglish, or English. Formal medical diagnosis is never required.
+                {lang === "bn"
+                  ? "আপনার কী সহায়তা প্রয়োজন তা আমাদের জানান। আপনার কোনো প্রযুক্তিগত শব্দ বা ডাক্তারি পরিভাষা জানার প্রয়োজন নেই। আপনি বাংলা, বাংলিশ বা ইংরেজিতে লিখতে পারেন।"
+                  : "Tell us what assistance you need. You do not need to know technical terms or declare a medical diagnosis. You can type in Bengali (বাংলা), Banglish, or English."}
               </p>
             </div>
 
             {/* Quick preset scenario phrases */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-[#142D36] block">
-                Standard Operational Templates (Click to insert):
+                {lang === "bn" ? "দ্রুত প্রিসেট টেমপ্লেট (ক্লিক করে বসান):" : "Standard Operational Templates (Click to insert):"}
               </label>
               <div className="flex flex-wrap gap-2 text-[11px]">
                 <button
@@ -343,7 +372,7 @@ export default function RequestHelpPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label htmlFor="description" className="text-xs font-bold text-[#142D36]">
-                  Describe who needs assistance and what is urgent: *
+                  {lang === "bn" ? "কার কী সহায়তা প্রয়োজন এবং কেন জরুরি তা লিখুন: *" : "Describe who needs assistance and what is urgent: *"}
                 </label>
                 <button
                   type="button"
@@ -353,10 +382,10 @@ export default function RequestHelpPage() {
                       ? "bg-[#D9534F] text-white border-[#B33936] animate-pulse"
                       : "bg-[#0B766E]/10 text-[#0B766E] border-[#0B766E]/20 hover:bg-[#0B766E]/20"
                   }`}
-                  title="Toggle voice speech recognition"
+                  title={lang === "bn" ? "ভয়েস স্পিচ রিকগনিশন চালু/বন্ধ করুন" : "Toggle voice speech recognition"}
                 >
                   {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                  <span>{isRecording ? "Recording Audio..." : "Speak Voice (কণ্ঠস্বর)"}</span>
+                  <span>{isRecording ? (lang === "bn" ? "অডিও রেকর্ড হচ্ছে..." : "Recording Audio...") : (lang === "bn" ? "কণ্ঠে বলুন (Speak Voice)" : "Speak Voice (কণ্ঠস্বর)")}</span>
                 </button>
               </div>
               <textarea
@@ -364,7 +393,11 @@ export default function RequestHelpPage() {
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="উদাহরণ: আমার বাবা হাঁটতে পারেন না। আমরা ৩ জন আছি। হুইলচেয়ার নিয়ে যাওয়ার মতো গাড়ি ও র‍্যাম্পযুক্ত আশ্রয় দরকার..."
+                placeholder={
+                  lang === "bn"
+                    ? "উদাহরণ: আমার বাবা হাঁটতে পারেন না। আমরা ৩ জন আছি। হুইলচেয়ার নিয়ে যাওয়ার মতো গাড়ি ও র‍্যাম্পযুক্ত আশ্রয় দরকার..."
+                    : "e.g., My elderly parent cannot walk and uses a wheelchair. We are 3 people near Dacope Bazar and need ramp-accessible vehicle transport..."
+                }
                 className="w-full p-3.5 rounded-xl border border-[#DBE6E2] focus:ring-2 focus:ring-[#0B766E] focus:border-[#0B766E] focus:outline-none text-sm text-[#142D36] leading-relaxed"
               />
             </div>
@@ -373,14 +406,14 @@ export default function RequestHelpPage() {
             <div className="space-y-1.5">
               <label htmlFor="location" className="text-xs font-bold text-[#142D36] flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#0B766E]" />
-                Approximate Location / Nearest Landmark:
+                {lang === "bn" ? "আনুমানিক অবস্থান / নিকটতম ল্যান্ডমার্ক:" : "Approximate Location / Nearest Landmark:"}
               </label>
               <input
                 id="location"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Dacope Bazar near Bridge Road, or Chalna High School"
+                placeholder={lang === "bn" ? "যেমন: চালনা বাজারের কাছে ব্রিজ রোড, বা চালনা হাই স্কুল" : "e.g. Dacope Bazar near Bridge Road, or Chalna High School"}
                 className="w-full p-3 rounded-xl border border-[#DBE6E2] focus:ring-2 focus:ring-[#0B766E] focus:border-[#0B766E] focus:outline-none text-sm text-[#142D36]"
               />
             </div>
@@ -390,7 +423,7 @@ export default function RequestHelpPage() {
               <div className="space-y-1.5">
                 <label htmlFor="groupSize" className="text-xs font-bold text-[#142D36] flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-[#0B766E]" />
-                  Total Persons Requiring Evacuation:
+                  {lang === "bn" ? "স্থানান্তরের জন্য মোট ব্যক্তির সংখ্যা:" : "Total Persons Requiring Evacuation:"}
                 </label>
                 <input
                   id="groupSize"
@@ -406,7 +439,7 @@ export default function RequestHelpPage() {
               <div className="space-y-1.5">
                 <label htmlFor="urgency" className="text-xs font-bold text-[#142D36] flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#0B766E]" />
-                  Urgency Level:
+                  {lang === "bn" ? "জরুরিতা মাত্রা:" : "Urgency Level:"}
                 </label>
                 <select
                   id="urgency"
@@ -414,9 +447,9 @@ export default function RequestHelpPage() {
                   onChange={(e) => setUrgency(e.target.value as UrgencyLevel)}
                   className="w-full p-3 rounded-xl border border-[#DBE6E2] focus:ring-2 focus:ring-[#0B766E] focus:border-[#0B766E] focus:outline-none text-sm text-[#142D36] font-medium"
                 >
-                  <option value="critical">Critical — Immediate Danger (পানি ঢুকছে / জীবন সংশয়)</option>
-                  <option value="urgent">Urgent — High Tide Rising (শীঘ্রই স্থানান্তর প্রয়োজন)</option>
-                  <option value="routine">Routine — Pre-evacuation Planning (পূর্বপ্রস্তুতি)</option>
+                  <option value="critical">{lang === "bn" ? "সংকটজনক — চরম ঝুঁকি (পানি ঢুকছে / জীবন সংশয়)" : "Critical — Immediate Danger (পানি ঢুকছে / জীবন সংশয়)"}</option>
+                  <option value="urgent">{lang === "bn" ? "জরুরি — দ্রুত স্থানান্তর প্রয়োজন (জোয়ার বৃদ্ধি পাচ্ছে)" : "Urgent — High Tide Rising (শীঘ্রই স্থানান্তর প্রয়োজন)"}</option>
+                  <option value="routine">{lang === "bn" ? "সাধারণ — পূর্বপ্রস্তুতিমূলক স্থানান্তর" : "Routine — Pre-evacuation Planning (পূর্বপ্রস্তুতি)"}</option>
                 </select>
               </div>
             </div>
@@ -425,19 +458,19 @@ export default function RequestHelpPage() {
             <div className="p-4 rounded-xl bg-[#F4F7F6] border border-[#DBE6E2] space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-[#142D36]">
                 <Phone className="w-3.5 h-3.5 text-[#0B766E]" />
-                Direct Contact Method (Optional — For Coordinator Dispatch):
+                {lang === "bn" ? "সরাসরি যোগাযোগের মাধ্যম (ঐচ্ছিক — সমন্বয়ক ডিসপ্যাচের জন্য):" : "Direct Contact Method (Optional — For Coordinator Dispatch):"}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
-                  placeholder="Contact Name (ঐচ্ছিক নাম)"
+                  placeholder={lang === "bn" ? "যোগাযোগকারীর নাম (ঐচ্ছিক)" : "Contact Name (ঐচ্ছিক নাম)"}
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   className="p-2.5 rounded-lg border border-[#DBE6E2] text-xs bg-white focus:ring-1 focus:ring-[#0B766E] focus:outline-none"
                 />
                 <input
                   type="tel"
-                  placeholder="Mobile Phone (মোবাইল নম্বর)"
+                  placeholder={lang === "bn" ? "মোবাইল নম্বর" : "Mobile Phone (মোবাইল নম্বর)"}
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   className="p-2.5 rounded-lg border border-[#DBE6E2] text-xs bg-white focus:ring-1 focus:ring-[#0B766E] focus:outline-none font-mono"
@@ -458,7 +491,7 @@ export default function RequestHelpPage() {
                 onClick={handleNextToStep2}
                 className="inline-flex items-center gap-2 bg-[#0B766E] hover:bg-[#085852] text-white px-6 py-3 rounded-xl font-bold text-xs shadow-sm transition"
               >
-                <span>Continue to Functional Needs</span>
+                <span>{lang === "bn" ? "কার্যকরী চাহিদায় এগিয়ে যান" : "Continue to Functional Needs"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -470,13 +503,15 @@ export default function RequestHelpPage() {
           <div className="bg-white p-6 sm:p-8 rounded-xl border border-[#DBE6E2] shadow-sm space-y-6">
             <div className="border-b border-[#DBE6E2] pb-4">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0B766E]">
-                Stage 2 of 3 · Functional Constraints
+                {lang === "bn" ? "ধাপ ২ / ৩ · কার্যকরী সুবিধাসমূহ" : "Stage 2 of 3 · Functional Constraints"}
               </span>
               <h1 className="text-2xl font-extrabold text-[#142D36] mt-1 tracking-tight">
-                Select your functional requirements
+                {lang === "bn" ? "আপনার কার্যকরী সুবিধাসমূহ নির্বাচন করুন" : "Select your functional requirements"}
               </h1>
               <p className="text-xs text-[#60747A] mt-1.5 leading-relaxed">
-                Select all accommodation requirements that apply. The automated matching engine strictly filters out vehicles and shelters that lack verified compliance for these physical constraints.
+                {lang === "bn"
+                  ? "প্রযোজ্য সমস্ত সহায়তার প্রয়োজনীয়তা নির্বাচন করুন। স্বয়ংক্রিয় ম্যাচিং ইঞ্জিন এই শারীরিক সীমাবদ্ধতার যাচাইকৃত সম্মতিবিহীন সমস্ত যানবাহন ও আশ্রয়কেন্দ্র বাদ দেবে।"
+                  : "Select all accommodation requirements that apply. The automated matching engine strictly filters out vehicles and shelters that lack verified compliance for these physical constraints."}
               </p>
             </div>
 
@@ -484,63 +519,63 @@ export default function RequestHelpPage() {
               {[
                 {
                   id: "wheelchair_transport" as NeedType,
-                  title: "Wheelchair Transport",
-                  desc: "Needs vehicle with folding ramp/lift and tie-down anchors.",
-                  badge: "Ramp / Lift",
+                  title: lang === "bn" ? "হুইলচেয়ার পরিবহন (Wheelchair Transport)" : "Wheelchair Transport",
+                  desc: lang === "bn" ? "র‌্যাম্প বা লিফট এবং হুইলচেয়ার বাঁধার অ্যাঙ্করযুক্ত গাড়ি প্রয়োজন।" : "Needs vehicle with folding ramp/lift and tie-down anchors.",
+                  badge: lang === "bn" ? "র‌্যাম্প / লিফট" : "Ramp / Lift",
                 },
                 {
                   id: "step_free_access" as NeedType,
-                  title: "Step-Free Shelter Access",
-                  desc: "Cannot climb stairs. Shelter must have 1:12 ramp or ground-floor entry.",
-                  badge: "Ramp Shelter",
+                  title: lang === "bn" ? "ধাপহীন আশ্রয়কেন্দ্র প্রবেশ (Step-Free Shelter Access)" : "Step-Free Shelter Access",
+                  desc: lang === "bn" ? "সিঁড়ি উঠতে অক্ষম। আশ্রয়কেন্দ্রে ১:১২ অনুপাতের র‍্যাম্প বা নিচতলায় প্রবেশাধিকার আবশ্যক।" : "Cannot climb stairs. Shelter must have 1:12 ramp or ground-floor entry.",
+                  badge: lang === "bn" ? "র‌্যাম্প আশ্রয়" : "Ramp Shelter",
                 },
                 {
                   id: "guided_assistance" as NeedType,
-                  title: "Guided Visual Assistance",
-                  desc: "Blind or low-vision; requires trained sighted guide volunteer.",
-                  badge: "Sighted Guide",
+                  title: lang === "bn" ? "দৃষ্টিপ্রতিবন্ধী নির্দেশিত সহায়তা (Guided Visual Assistance)" : "Guided Visual Assistance",
+                  desc: lang === "bn" ? "দৃষ্টিহীন বা স্বল্পদৃষ্টি; দিক নির্দেশনায় প্রশিক্ষিত ভলান্টিয়ার প্রয়োজন।" : "Blind or low-vision; requires trained sighted guide volunteer.",
+                  badge: lang === "bn" ? "গাইড সহকারী" : "Sighted Guide",
                 },
                 {
                   id: "visual_communication" as NeedType,
-                  title: "Hearing-Accessible Comms",
-                  desc: "Deaf or hard of hearing; communicate via SMS/visual signals, no voice calls.",
-                  badge: "SMS / Text Only",
+                  title: lang === "bn" ? "শ্রবণপ্রতিবন্ধী ভিজ্যুয়াল যোগাযোগ (Hearing-Accessible Comms)" : "Hearing-Accessible Comms",
+                  desc: lang === "bn" ? "বধির বা শুনতে সমস্যা; এসএমএস বা চাক্ষুষ সংকেতে যোগাযোগ প্রয়োজন, ফোন কল নয়।" : "Deaf or hard of hearing; communicate via SMS/visual signals, no voice calls.",
+                  badge: lang === "bn" ? "এসএমএস / ভিজ্যুয়াল" : "SMS / Text Only",
                 },
                 {
                   id: "sign_language" as NeedType,
-                  title: "Sign Language (BdSL)",
-                  desc: "Communicates using Bengali Sign Language.",
-                  badge: "BdSL Volunteer",
+                  title: lang === "bn" ? "বাংলা ইশারা ভাষা (Sign Language - BdSL)" : "Sign Language (BdSL)",
+                  desc: lang === "bn" ? "বাংলা সাইন ল্যাঙ্গুয়েজে যোগাযোগকারী দল প্রয়োজন।" : "Communicates using Bengali Sign Language.",
+                  badge: lang === "bn" ? "ইশারা ভাষা" : "BdSL Volunteer",
                 },
                 {
                   id: "power_equipment" as NeedType,
-                  title: "Power for Medical Devices",
-                  desc: "Oxygen concentrator, ventilator, suction; requires generator backup.",
-                  badge: "Generator Shelter",
+                  title: lang === "bn" ? "চিকিৎসা সরঞ্জামের নিরবচ্ছিন্ন বিদ্যুৎ (Power for Medical Devices)" : "Power for Medical Devices",
+                  desc: lang === "bn" ? "অক্সিজেন কনসেনট্রেটর, ভেন্টিলেটর বা সাকশন; জেনারেটর ব্যাকআপ প্রয়োজন।" : "Oxygen concentrator, ventilator, suction; requires generator backup.",
+                  badge: lang === "bn" ? "জেনারেটর ব্যাকআপ" : "Generator Shelter",
                 },
                 {
                   id: "caregiver_accompaniment" as NeedType,
-                  title: "Caregiver Accompaniment",
-                  desc: "Family member or personal attendant must remain together during transit.",
-                  badge: "Stay Together",
+                  title: lang === "bn" ? "পরিচর্যাদাতার উপস্থিতি (Caregiver Accompaniment)" : "Caregiver Accompaniment",
+                  desc: lang === "bn" ? "পরিবারের সদস্য বা সহায়তাকারী ট্রানজিটের সময় সাথে থাকতে হবে।" : "Family member or personal attendant must remain together during transit.",
+                  badge: lang === "bn" ? "একসাথে থাকুন" : "Stay Together",
                 },
                 {
                   id: "older_adult_assistance" as NeedType,
-                  title: "Older Adult Support",
-                  desc: "Seniors with limited mobility needing patient boarding assistance.",
-                  badge: "Elderly Care",
+                  title: lang === "bn" ? "প্রবীণ নাগরিক সহায়তা (Older Adult Support)" : "Older Adult Support",
+                  desc: lang === "bn" ? "সীমিত চলাচলের প্রবীণদের ওঠা-নামায় শারীরিক সহায়তা দরকার।" : "Seniors with limited mobility needing patient boarding assistance.",
+                  badge: lang === "bn" ? "প্রবীণ সেবা" : "Elderly Care",
                 },
                 {
                   id: "cognitive_support" as NeedType,
-                  title: "Cognitive / Sensory Calm",
-                  desc: "Low-stimulus, calm environment for neurodivergent or anxious individuals.",
-                  badge: "Calm Space",
+                  title: lang === "bn" ? "সংবেদনশীল ও স্নায়বিক শান্ত পরিবেশ (Cognitive / Sensory Calm)" : "Cognitive / Sensory Calm",
+                  desc: lang === "bn" ? "অটিস্টিক বা আতঙ্কগ্রস্তদের জন্য কম কোলাহলপূর্ণ শান্ত স্থান।" : "Low-stimulus, calm environment for neurodivergent or anxious individuals.",
+                  badge: lang === "bn" ? "শান্ত পরিবেশ" : "Calm Space",
                 },
                 {
                   id: "other" as NeedType,
-                  title: "Other Specialized Need",
-                  desc: "Details mentioned in description notes.",
-                  badge: "Specialized",
+                  title: lang === "bn" ? "অন্যান্য বিশেষ চাহিদা (Other Specialized Need)" : "Other Specialized Need",
+                  desc: lang === "bn" ? "বিবরণ বক্সে বিস্তারিত উল্লেখ করা হয়েছে।" : "Details mentioned in description notes.",
+                  badge: lang === "bn" ? "বিশেষায়িত" : "Specialized",
                 },
               ].map((item) => {
                 const isSelected = selectedNeeds.includes(item.id);
@@ -589,7 +624,7 @@ export default function RequestHelpPage() {
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#60747A] hover:text-[#142D36] transition"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Return to Situation</span>
+                <span>{lang === "bn" ? "পরিস্থিতিতে ফিরে যান" : "Return to Situation"}</span>
               </button>
 
               <button
@@ -597,7 +632,7 @@ export default function RequestHelpPage() {
                 onClick={handleNextToStep3}
                 className="inline-flex items-center gap-2 bg-[#0B766E] hover:bg-[#085852] text-white px-6 py-3 rounded-xl font-bold text-xs shadow-sm transition"
               >
-                <span>Review & Confirm</span>
+                <span>{lang === "bn" ? "পর্যালোচনা ও নিশ্চিতকরণ" : "Review & Confirm"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -609,13 +644,15 @@ export default function RequestHelpPage() {
           <div className="bg-white p-6 sm:p-8 rounded-xl border border-[#DBE6E2] shadow-sm space-y-6">
             <div className="border-b border-[#DBE6E2] pb-4">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0B766E]">
-                Stage 3 of 3 · Final Verification
+                {lang === "bn" ? "ধাপ ৩ / ৩ · চূড়ান্ত যাচাইকরণ" : "Stage 3 of 3 · Final Verification"}
               </span>
               <h1 className="text-2xl font-extrabold text-[#142D36] mt-1 tracking-tight">
-                Review and Submit Request
+                {lang === "bn" ? "অনুরোধ পর্যালোচনা ও নিশ্চিতকরণ" : "Review and Submit Request"}
               </h1>
               <p className="text-xs text-[#60747A] mt-1.5 leading-relaxed">
-                Confirm your submitted details prior to queuing for dispatch. You can update any field before transmitting.
+                {lang === "bn"
+                  ? "ডিসপ্যাচের জন্য সারিবদ্ধ করার পূর্বে আপনার জমা দেওয়া বিবরণ নিশ্চিত করুন। পাঠানোর পূর্বে যেকোনো তথ্য পরিবর্তন করতে পারেন।"
+                  : "Confirm your submitted details prior to queuing for dispatch. You can update any field before transmitting."}
               </p>
             </div>
 
@@ -623,7 +660,7 @@ export default function RequestHelpPage() {
             <div className="bg-[#F4F7F6] p-5 rounded-xl border border-[#DBE6E2] space-y-4">
               <div>
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#60747A]">
-                  Stated Evacuation Narrative
+                  {lang === "bn" ? "নাগরিকের বিবৃত পরিস্থিতি" : "Stated Evacuation Narrative"}
                 </span>
                 <p className="text-sm text-[#142D36] font-medium mt-1 italic leading-relaxed">
                   &ldquo;{description}&rdquo;
@@ -632,23 +669,35 @@ export default function RequestHelpPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-3 border-t border-[#DBE6E2]">
                 <div>
-                  <span className="text-[#60747A] block font-mono text-[11px]">LOCATION LANDMARK</span>
+                  <span className="text-[#60747A] block font-mono text-[11px]">
+                    {lang === "bn" ? "অবস্থানের ল্যান্ডমার্ক" : "LOCATION LANDMARK"}
+                  </span>
                   <span className="font-semibold text-[#142D36] text-sm">
-                    {location || "Pending landmark confirmation"}
+                    {location || (lang === "bn" ? "ল্যান্ডমার্ক নিশ্চিতকরণ বাকি" : "Pending landmark confirmation")}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[#60747A] block font-mono text-[11px]">EVACUEES HEADCOUNT</span>
-                  <span className="font-semibold text-[#142D36] text-sm font-mono">{groupSize} Person(s)</span>
+                  <span className="text-[#60747A] block font-mono text-[11px]">
+                    {lang === "bn" ? "স্থানান্তরপ্রার্থী সংখ্যা" : "EVACUEES HEADCOUNT"}
+                  </span>
+                  <span className="font-semibold text-[#142D36] text-sm font-mono">
+                    {formatNumber(groupSize, lang)} {lang === "bn" ? "জন ব্যক্তি" : "Person(s)"}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[#60747A] block font-mono text-[11px]">URGENCY ASSESSMENT</span>
-                  <span className="font-semibold capitalize text-[#D9534F] text-sm">{urgency}</span>
+                  <span className="text-[#60747A] block font-mono text-[11px]">
+                    {lang === "bn" ? "জরুরিতা মূল্যায়ন" : "URGENCY ASSESSMENT"}
+                  </span>
+                  <span className="font-semibold capitalize text-[#D9534F] text-sm">
+                    {urgency}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[#60747A] block font-mono text-[11px]">COMMUNICATION CHANNEL</span>
+                  <span className="text-[#60747A] block font-mono text-[11px]">
+                    {lang === "bn" ? "যোগাযোগ মাধ্যম" : "COMMUNICATION CHANNEL"}
+                  </span>
                   <span className="font-semibold text-[#142D36] text-sm">
-                    {contactName || "Citizen"} {contactPhone ? `(${contactPhone})` : ""}
+                    {contactName || (lang === "bn" ? "নাগরিক" : "Citizen")} {contactPhone ? `(${contactPhone})` : ""}
                   </span>
                 </div>
               </div>
@@ -656,7 +705,7 @@ export default function RequestHelpPage() {
               {selectedNeeds.length > 0 && (
                 <div className="pt-3 border-t border-[#DBE6E2]">
                   <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#60747A] block mb-2">
-                    Verified Support Requirements:
+                    {lang === "bn" ? "যাচাইকৃত সহায়তার সুবিধাসমূহ (Verified Support Requirements):" : "Verified Support Requirements:"}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedNeeds.map((n) => (
@@ -677,9 +726,13 @@ export default function RequestHelpPage() {
               <div className="flex items-start gap-2.5 text-xs text-[#142D36]">
                 <Shield className="w-5 h-5 text-[#0B766E] shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <span className="font-bold">Transparent Data Sharing & Minimization Guarantee:</span>
+                  <span className="font-bold">
+                    {lang === "bn" ? "স্বচ্ছ তথ্য শেয়ারিং ও ডেটা মিনিমাইজেশন প্রতিশ্রুতি:" : "Transparent Data Sharing & Minimization Guarantee:"}
+                  </span>
                   <p className="text-[#60747A] leading-relaxed">
-                    By submitting, only necessary functional accommodation parameters (such as wheelchair vehicle ramp or generator access) and navigation coordinates are transmitted to verified civil defense coordinators and assigned responders. Medical records and clinical diagnoses are neither requested nor stored.
+                    {lang === "bn"
+                      ? "অনুরোধ প্রেরণের মাধ্যমে কেবলমাত্র প্রয়োজনীয় কার্যকরী সুবিধাসমূহ (যেমন হুইলচেয়ার যান বা জেনারেটর সংযোগ) এবং অবস্থান সমন্বয়ক ও উদ্ধারকারী দলের কাছে প্রেরিত হয়। কোনো ডাক্তারি রেকর্ড চাওয়া হয় না বা সংরক্ষণ করা হয় না।"
+                      : "By submitting, only necessary functional accommodation parameters (such as wheelchair vehicle ramp or generator access) and navigation coordinates are transmitted to verified civil defense coordinators and assigned responders. Medical records and clinical diagnoses are neither requested nor stored."}
                   </p>
                 </div>
               </div>
@@ -692,7 +745,9 @@ export default function RequestHelpPage() {
                   className="mt-0.5 rounded text-[#0B766E] focus:ring-[#0B766E] w-4 h-4"
                 />
                 <span className="text-xs font-semibold text-[#142D36] leading-relaxed">
-                  I consent to sharing these functional assistance requirements with the verified emergency response coordination team for this simulated scenario.
+                  {lang === "bn"
+                    ? "আমি এই সিমুলেটেড পরিস্থিতিতে জরুরি সমন্বয়কারী দলের সাথে এই কার্যকরী সহায়তার প্রয়োজনীয়তা ভাগ করে নিতে সম্মত হচ্ছি।"
+                    : "I consent to sharing these functional assistance requirements with the verified emergency response coordination team for this simulated scenario."}
                 </span>
               </label>
             </div>
@@ -711,7 +766,7 @@ export default function RequestHelpPage() {
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#60747A] hover:text-[#142D36] transition"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Return to Functional Needs</span>
+                <span>{lang === "bn" ? "কার্যকরী চাহিদায় ফিরে যান" : "Return to Functional Needs"}</span>
               </button>
 
               <button
@@ -723,12 +778,12 @@ export default function RequestHelpPage() {
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Processing Constraints...</span>
+                    <span>{lang === "bn" ? "প্রসেসিং হচ্ছে..." : "Processing Constraints..."}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Submit Emergency Request</span>
+                    <span>{lang === "bn" ? "জরুরি সহায়তা অনুরোধ পাঠান" : "Submit Emergency Request"}</span>
                   </>
                 )}
               </button>
@@ -746,14 +801,16 @@ export default function RequestHelpPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-[#142D36] tracking-tight">
-                    Saved on this device — not yet sent
+                    {lang === "bn" ? "এই ডিভাইসে সংরক্ষিত — এখনো পাঠানো হয়নি" : "Saved on this device — not yet sent"}
                   </h2>
                   <p className="text-xs text-[#60747A] mt-1.5 max-w-md mx-auto leading-relaxed">
-                    Your request was recorded in local offline cache. When internet connectivity is restored, this terminal will automatically transmit the record to the emergency coordinator pool.
+                    {lang === "bn"
+                      ? "আপনার অনুরোধ স্থানীয় অফলাইন ক্যাশে সংরক্ষিত হয়েছে। ইন্টারনেট সংযোগ ফিরে এলে স্বয়ংক্রিয়ভাবে জরুরি সমন্বয়কারী দলের কাছে প্রেরিত হবে।"
+                      : "Your request was recorded in local offline cache. When internet connectivity is restored, this terminal will automatically transmit the record to the emergency coordinator pool."}
                   </p>
                 </div>
                 <div className="inline-block bg-[#F4F7F6] px-4 py-2 rounded-lg text-xs font-mono font-medium text-[#60747A] border border-[#DBE6E2]">
-                  Draft Reference: DRAFT-{Date.now().toString().slice(-6)}
+                  {lang === "bn" ? "খসড়া রেফারেন্স:" : "Draft Reference:"} {draftReference}
                 </div>
               </div>
             ) : (
@@ -762,59 +819,63 @@ export default function RequestHelpPage() {
                   <div>
                     <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0B766E] flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-[#159B82]" />
-                      Submission Confirmed
+                      {lang === "bn" ? "Submission Confirmed · আবেদন নিশ্চিতকরণ" : "Submission Confirmed"}
                     </span>
                     <h2 className="text-2xl font-black text-[#142D36] mt-1 tracking-tight font-mono">
                       Case Reference: {submittedCase?.id}
                     </h2>
                     <p className="text-xs text-[#60747A] mt-0.5">
-                      Request logged in dispatch pipeline. AI Needs Engine extracted constraints for human-in-the-loop coordinator approval.
+                      {lang === "bn"
+                        ? "অনুরোধটি ডিসপ্যাচ পাইপলাইনে নিবন্ধিত হয়েছে। এআই ইঞ্জিন মানবিক সমন্বয়কের অনুমোদনের জন্য সুবিধাসমূহ বিশ্লেষণ করেছে।"
+                        : "Request logged in dispatch pipeline. AI Needs Engine extracted constraints for human-in-the-loop coordinator approval."}
                     </p>
                   </div>
                   <div className="px-3 py-1 rounded bg-[#0B766E]/10 border border-[#0B766E]/20 text-[#0B766E] text-xs font-mono font-bold">
-                    QUEUED DISPATCH
+                    {lang === "bn" ? "অপেক্ষমাণ ডিসপ্যাচ" : "QUEUED DISPATCH"}
                   </div>
                 </div>
 
                 {/* Live Status Pipeline Visualizer */}
                 <div className="p-5 rounded-xl bg-[#091E2C] text-white border border-[#103B48] space-y-4">
                   <div className="flex items-center justify-between text-xs font-mono text-[#63DEC2] pb-2 border-b border-[#103B48]">
-                    <span className="font-bold">Live Tracking Workflow</span>
+                    <span className="font-bold">
+                      {lang === "bn" ? "Live Tracking Workflow · সরাসরি পর্যবেক্ষণ" : "Live Tracking Workflow"}
+                    </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-[#159B82] animate-pulse" />
-                      MONITORING ACTIVE
+                      {lang === "bn" ? "সক্রিয় পর্যবেক্ষণ" : "MONITORING ACTIVE"}
                     </span>
                   </div>
 
                   <div className="space-y-3 pt-1">
                     {[
                       {
-                        title: "1. Request Submitted",
-                        desc: "Payload captured and stored securely in database.",
+                        title: lang === "bn" ? "১. অনুরোধ গৃহীত" : "1. Request Submitted",
+                        desc: lang === "bn" ? "ডাটাবেজে নিরাপদে সংরক্ষিত হয়েছে।" : "Payload captured and stored securely in database.",
                         done: true,
                         active: false,
                       },
                       {
-                        title: "2. AI Needs Understanding Completed",
-                        desc: "Functional constraints extracted without clinical diagnosis.",
+                        title: lang === "bn" ? "২. এআই চাহিদা বিশ্লেষণ সম্পন্ন" : "2. AI Needs Understanding Completed",
+                        desc: lang === "bn" ? "ডাক্তারি রোগনির্ণয় ব্যতীত শারীরিক প্রতিবন্ধকতা চিহ্নিত।" : "Functional constraints extracted without clinical diagnosis.",
                         done: true,
                         active: false,
                       },
                       {
-                        title: "3. Waiting for Coordinator Review",
-                        desc: "Coordinator reviewing verified step-free vehicles & shelters.",
+                        title: lang === "bn" ? "৩. সমন্বয়ক পর্যালোচনার অপেক্ষায়" : "3. Waiting for Coordinator Review",
+                        desc: lang === "bn" ? "উপযুক্ত র্যাম্পযুক্ত যানবাহন ও আশ্রয়কেন্দ্র যাচাই চলছে।" : "Coordinator reviewing verified step-free vehicles & shelters.",
                         done: false,
                         active: true,
                       },
                       {
-                        title: "4. Responder Assigned & Dispatched",
-                        desc: "Volunteer team commits to arrival landmark.",
+                        title: lang === "bn" ? "৪. রেসপন্ডার বরাদ্দ ও রওয়ানা" : "4. Responder Assigned & Dispatched",
+                        desc: lang === "bn" ? "স্বেচ্ছাসেবক উদ্ধারকারী দল রওনা দিয়েছে।" : "Volunteer team commits to arrival landmark.",
                         done: false,
                         active: false,
                       },
                       {
-                        title: "5. Arrival & Safe Shelter Confirmed",
-                        desc: "Evacuation recorded on immutable audit timeline.",
+                        title: lang === "bn" ? "৫. নিরাপদ আশ্রয়কেন্দ্রে পৌঁছানো সম্পন্ন" : "5. Arrival & Safe Shelter Confirmed",
+                        desc: lang === "bn" ? "অপরিবর্তনীয় অডিট টাইমলাইনে স্থানান্তর সম্পন্ন লিপিবদ্ধ।" : "Evacuation recorded on immutable audit timeline.",
                         done: false,
                         active: false,
                       },
@@ -855,14 +916,14 @@ export default function RequestHelpPage() {
                     }}
                     className="text-xs font-bold text-[#0B766E] hover:underline"
                   >
-                    + Submit Another Assistance Request
+                    {lang === "bn" ? "+ আরেকটি সহায়তা অনুরোধ জমা দিন" : "+ Submit Another Assistance Request"}
                   </button>
 
                   <Link
                     href="/operations"
                     className="inline-flex items-center gap-2 bg-[#0B766E] hover:bg-[#085852] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition"
                   >
-                    <span>View in Coordinator Operations Center</span>
+                    <span>{lang === "bn" ? "সমন্বয়ক অপারেশন কেন্দ্রে দেখুন" : "View in Coordinator Operations Center"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>

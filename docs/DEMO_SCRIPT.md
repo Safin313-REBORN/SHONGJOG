@@ -1,7 +1,7 @@
-# SHONGJOG — Official 2-Minute 30-Second Hackathon Demo Script
+# SHONGJOG — Official 3-Minute Hackathon Demo Script
 ## AI-Powered Inclusive Last-Mile Emergency Access Network
 **Hackathon:** CTRL-V 2026  
-**Presentation Timing:** Exactly 2 minutes 30 seconds (150 seconds)  
+**Presentation Timing:** Exactly 3 minutes (180 seconds)  
 **Presenter:** Antigravity Team Lead / Product Engineer  
 **Live Demo URL:** `http://localhost:3000`
 
@@ -9,80 +9,75 @@
 
 ## Storyboard & Timing Breakdown
 
-### [0:00 – 0:20] The Problem & The Forgotten Last-Mile
-- **Visual:** Open on the Public Landing Page (`/`). Scroll smoothly past the hero to the statistic cards: **84%** of persons with disabilities have no disaster plan, and **>70%** of cyclone shelters lack ramps.
+### [0:00 – 0:30] The Crisis & The Forgotten Last Mile
+- **Visual:** Open on the Public Landing Page (`/`). 
+  - Showcase the photographic split-screen hero featuring the southwest Bangladesh delta waterway.
+  - Point out the explicit disclosure: `DEMO SIMULATION — NOT A LIVE EMERGENCY SERVICE`.
+  - Scroll smoothly to Section 2 ("When everyone receives a warning, can everyone actually respond?"): highlight the 3 UNDRR statistics (**84%** unassisted, **56%** evacuation barrier, **23%** warning comprehension).
 - **Presenter (Voiceover):**
-  > "When a catastrophic cyclone strikes coastal Bangladesh, siren loudspeakers wail across the delta. But a warning is only useful when everyone can act.
-  > For a wheelchair user facing a flooded embankment, a deaf mother who cannot hear sirens, or an elder on an electric oxygen concentrator, receiving an alert does not mean being able to escape.
-  > Disasters don't kill because people don't care; they kill because of the last-mile coordination failure."
+  > "When a severe cyclone barrels toward coastal Bangladesh, sirens roar across the delta. But a warning is only useful when everyone can act.
+  > For a wheelchair user facing a flooded mud embankment, a deaf elder who cannot hear sirens, or a family caring for someone on an electric nebulizer, hearing an alert doesn't mean being able to escape.
+  > Research proves persons with disabilities suffer two to four times higher mortality during disasters—not because communities don't care, but because of a broken last-mile coordination chain."
 
 ---
 
-### [0:20 – 0:40] Introducing SHONGJOG
-- **Visual:** Return to the top of `/` showcasing the animated vector map of Dacope, Khulna. Click the language toggle to switch between **বাংলা** and **English**.
+### [0:30 – 1:00] Introducing SHONGJOG & The 8-Stage Access Chain
+- **Visual:** 
+  - Scroll past the **8-Stage Systemic Failure Diagram**, contrasting conventional alerts with SHONGJOG.
+  - Arrive at Section 5: **Interactive Triage Walkthrough (`<InteractiveWalkthrough />`)**.
+  - Click through Stage 1 (Citizen Request in Bengali) → Stage 2 (AI Extraction of JSON barriers) → Stage 3 (Hard Constraint Matching).
+  - Point out the **Rejection Reason**: *"Rejected: 14 steep stairs, no ramp. Closer distance bypassed for life safety."*
 - **Presenter (Voiceover):**
   > "This is **SHONGJOG** (সংযোগ) — the inclusive last-mile emergency access network.
-  > SHONGJOG is not another alert broadcaster or generic chatbot. It is a robust, constraint-governed coordination layer that turns an unstructured plea for help into an accountable, verified evacuation mission."
+  > Rather than broadcasting generic sirens or relying on unverified chatbots, SHONGJOG bridges the gap with a dual-engine architecture.
+  > Right here on our landing page, you can see our triage engine in action. When a family requests help in colloquial Bengali, our AI parses the functional barriers. 
+  > Then, our deterministic matching engine checks 7 non-negotiable physical constraints. Look at this rejection note: proximity never trumps accessibility. The system bypasses a closer shelter because it has steep stairs, protecting our user from being stranded at ground level."
 
 ---
 
-### [0:40 – 1:10] Citizen Intake in Bengali (Mobile-First)
-- **Visual:** Click **"Request Assistance"** (`/request-help`).
-  1. Click the preset: *"বাংলা: আমার বাবা হাঁটতে পারেন না, প্যারালাইজড। আমাদের হুইলচেয়ার নিয়ে যাওয়ার মতো গাড়ি লাগবে। ডাকোপ বাজার।"*
-  2. Show voice speech recognition button.
-  3. Click **"Continue to Functional Needs"** (Step 2). Show multi-select cards: Wheelchair Transport, Step-Free Shelter Access, Caregiver Accompaniment.
-  4. Advance to Step 3, display data minimization disclosure, check consent, and click **"Submit Emergency Request"**.
-  5. Show immediate confirmation: **Case Reference `SHG-2026-XXXX`** with the live pipeline tracker.
+### [1:00 – 1:35] Live Citizen Intake with Dialect & Functional Needs
+- **Visual:** Navigate to **"Request Assistance"** (`/request-help`).
+  1. Highlight the reassuring onboarding message: *"Tell us what assistance you need. You do not need to know technical terms or declare a medical diagnosis."*
+  2. Select the Bengali preset: *"আমার বাবা হাঁটতে পারেন না, প্যারালাইজড। আমাদের হুইলচেয়ার নিয়ে যাওয়ার মতো গাড়ি লাগবে। ডাকোপ বাজার।"*
+  3. Toggle the microphone icon demonstrating voice speech recognition.
+  4. Step 2: Show the functional access requirement cards (Wheelchair boarding, Step-free shelter, Electrical backup).
+  5. Step 3: Advance through data minimization disclosure and submit. Show the generated case reference `SHG-2026-XXXX`.
 - **Presenter (Voiceover):**
-  > "A citizen or caregiver enters what is happening in colloquial Bengali, Banglish, or English—by voice or text. Notice we never ask for a medical diagnosis; we ask for functional barriers.
-  > Even if network towers go down, our offline-first PWA caches the request locally and clearly states: *'Saved on this device — not yet sent'* so false hope is never given. Upon connection, it syncs instantly."
+  > "Submitting a request is fast, compassionate, and accessible. Citizens or caregivers communicate in their natural dialect—via voice or text. We never ask for clinical labels; we ask for functional needs.
+  > Even if cellular connectivity drops, our offline PWA caches the request locally and clearly states: *'Saved on this device — not yet sent'*, preventing false reassurance. As soon as the network returns, it synchronizes securely."
 
 ---
 
-### [1:10 – 1:40] AI Needs Engine & Constrained Resource Matching
+### [1:35 – 2:15] Operations Center & Real Google Maps Integration
 - **Visual:** Navigate to the **Coordinator Operations Center** (`/operations`).
-  1. Show live KPI telemetry counters (Active Requests, Awaiting Review, Responders).
-  2. Click the newly created case in the Priority Queue.
-  3. Inspect the right-hand Case Detail Drawer:
-     - Show AI extraction card: language identified as `bn`, group size 4, support needs detected.
-     - Show **Intelligent Matching Engine Output**:
-       - Vehicle: *Dacope Accessible Van Alpha* (Retrofitted Ramp, verified).
-       - Shelter: *Dacope Model Cyclone Shelter* (1:12 concrete ramp, 15kVA generator).
-       - Rejection note: Shows that closer shelter *Bajua Union Building* was **rejected** because it has 14 steep stairs and no ramp!
+  1. Showcase the live operational KPI ribbon with 4-hour cycle windows and the green alert banner: *"Zero Unmatched Needs — Active Bottlenecks: None"*.
+  2. Inspect the **Google Operations Map**:
+     - Toggle between **Satellite**, **Terrain**, and **Roadmap** views.
+     - Toggle layers: Shelter Pins, Transport Units, Hazard Buffer.
+     - Click an active case on the left: show the map smoothly panning and centering on the coordinate pin.
+  3. In the Case Drawer, show the explainability checklist and click **"Authorize & Dispatch Assignment"**. Show the atomic shelter capacity decrement.
 - **Presenter (Voiceover):**
-  > "In the Operations Center, our AI engine converts conversational Bengali into verified JSON constraints. 
-  > Then, our deterministic matching engine applies **7 hard physical constraints**. Look closely: proximity never trumps accessibility. The system bypasses a closer shelter because it has steep stairs, safely routing our wheelchair user to a verified step-free facility.
-  > Furthermore, unverified crowdsourced boats are quarantined from the safe dispatch pool."
+  > "In the Operations Center, coordinators maintain bird's-eye situational awareness powered by Google Maps Platform. We can switch between high-resolution satellite imagery, terrain contours, and roadmaps, with dynamic live pins for every case and rescue asset.
+  > Unmatched needs are flagged as critical bottlenecks. When a coordinator reviews a case, every safety rule is transparently displayed. AI assists, but only an authorized human coordinator can authorize dispatch—triggering atomic database updates so resources are never double-booked."
 
 ---
 
-### [1:40 – 2:05] Human Authorization & Field Responder Workflow
-- **Visual:**
-  1. In Coordinator Operations, click **"Authorize & Dispatch Assignment"**. Show atomic capacity deduction.
-  2. Switch to the **Field Responder App** (`/responder`).
-  3. Show the incoming case briefing on the mobile viewport with data minimization.
-  4. Click **"Accept Assignment"** → click **"Start Response (En Route)"** → click **"Mark Arrived"**.
+### [2:15 – 2:45] Field Responder App & Verified Safe Arrival
+- **Visual:** Switch to the **Field Responder View** (`/responder`).
+  1. Show the incoming case briefing formatted for mobile viewports.
+  2. Click the external **"Open Google Maps Navigation"** link showing coordinates.
+  3. Execute the state transitions: **Accept Assignment** → **Start Response (En Route)** → **Mark Arrived** → **Confirm Assistance Delivered**.
+  4. Show the immutable audit event timeline recording every timestamp and actor.
 - **Presenter (Voiceover):**
-  > "Crucially, AI never dispatches units alone. An accountable human coordinator reviews the explainability checklist and authorizes the assignment.
-  > The field responder receives a data-minimized navigation briefing on their phone. They accept, mark en route, and confirm arrival with atomic server-side validation."
+  > "On the ground, field teams and boat pilots receive a mobile-optimized briefing. With one tap, they open Google Maps turn-by-turn navigation directly to the rendezvous coordinates.
+  > Their interface follows strict data minimization—only displaying what is essential for safe transit. 
+  > The responder steps through each state, and upon safely assisting the family into the step-free facility, confirms delivery. The vehicle is instantly freed for the next run, and an immutable audit log records the completed mission."
 
 ---
 
-### [2:05 – 2:25] Confirmed Delivery & Audit Timeline
-- **Visual:**
-  1. In the Responder App, click **"Confirm Assistance Delivered"**.
-  2. Show the updated case status: **Completed**.
-  3. Show the **Event Timeline (Audit Log)** with every timestamp and actor.
-  4. Quick peek at `/resources` showing updated shelter headroom and verification tags.
+### [2:45 – 3:00] Closing Vision
+- **Visual:** Return to the SHONGJOG landing page. Highlight the tagline: *"A warning is only useful when everyone can act."*
 - **Presenter (Voiceover):**
-  > "Upon arrival, the responder confirms the family is safely inside the accessible ground-floor shelter ward. 
-  > The vehicle is released back to the fleet, the shelter's available headroom updates atomically, and every step is permanently recorded on an immutable audit trail."
-
----
-
-### [2:25 – 2:30] Closing Vision
-- **Visual:** Return to the hero headline of SHONGJOG on desktop.
-- **Presenter (Voiceover):**
-  > "In an emergency, seconds matter—but dignity and accessibility matter just as much. 
-  > SHONGJOG: Because no one should be left behind when help could have reached them. Thank you."
-
+  > "Disasters are inevitable, but leaving vulnerable people behind is not. 
+  > With Google Maps geospatial routing, dialect-aware AI, deterministic physical safety constraints, and human-in-the-loop governance, SHONGJOG turns emergency alerts into inclusive action.
+  > Thank you."

@@ -4,7 +4,14 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { requestId, vehicleId, shelterId, responderId, coordinatorName = "Coordinator Duty Desk" } = body;
+    const {
+      requestId,
+      vehicleId,
+      shelterId,
+      responderId,
+      coordinatorName = "Coordinator Duty Desk",
+      idempotencyKey,
+    } = body;
 
     if (!requestId) {
       return NextResponse.json({ success: false, error: "Request ID is required." }, { status: 400 });
@@ -19,103 +26,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Case not found." }, { status: 404 });
     }
 
+    // Idempotency check: if already assigned, return existing assignment cleanly if idempotent retry
     if (caseReq.assignment && ["assigned", "accepted", "in_progress"].includes(caseReq.assignment.status)) {
+      if (idempotencyKey && caseReq.assignment.id) {
+        return NextResponse.json({
+          success: true,
+          data: caseReq.assignment,
+          idempotent: true,
+        });
+      }
       return NextResponse.json(
         { success: false, error: "Case already has an active assignment in progress." },
         { status: 409 }
       );
     }
 
-    // Atomic transaction for resource reservation and assignment creation
+    // Database-enforced atomic transaction for resource reservation and assignment creation
     const assignmentResult = await prisma.$transaction(async (tx) => {
-      // 1. Validate & Reserve Vehicle
+      // 1. Database-Enforced Atomic Reservation for Vehicle
       if (vehicleId) {
-        const vehicle = await tx.resource.findUnique({
-          where: { id: vehicleId },
-          include: {
-            assignmentsAsVeh: {
-              where: { status: { in: ["assigned", "accepted", "in_progress"] } },
-            },
-          },
-        });
+        // Enforce capacity headroom atomically in SQL to prevent race conditions
+        const vehicleAffected = await tx.$executeRaw`
+          UPDATE Resource
+          SET reservedCapacity = reservedCapacity + ${caseReq.groupSize}
+          WHERE id = ${vehicleId}
+            AND isActive = 1
+            AND (verificationStatus = 'verified' OR verificationStatus = 'partner_verified')
+            AND (totalCapacity - reservedCapacity - currentOccupancy) >= ${caseReq.groupSize}
+        `;
 
-        if (!vehicle || !vehicle.isActive) {
-          throw new Error(`Vehicle ${vehicleId} is not active or available.`);
-        }
-
-        if (vehicle.verificationStatus !== "verified" && vehicle.verificationStatus !== "partner_verified") {
-          throw new Error(`Safety violation: Vehicle ${vehicle.name} is unverified and cannot be assigned.`);
-        }
-
-        if (vehicle.assignmentsAsVeh.length > 0) {
-          throw new Error(`Vehicle ${vehicle.name} is already committed to an active assignment.`);
-        }
-
-        const availCap = vehicle.totalCapacity - vehicle.reservedCapacity - vehicle.currentOccupancy;
-        if (availCap < caseReq.groupSize) {
+        if (vehicleAffected === 0) {
           throw new Error(
-            `Vehicle ${vehicle.name} capacity exceeded (Available: ${availCap}, Needed: ${caseReq.groupSize}).`
+            `Vehicle capacity exceeded, unverified, or unavailable for reservation.`
           );
         }
-
-        await tx.resource.update({
-          where: { id: vehicleId },
-          data: { reservedCapacity: { increment: caseReq.groupSize } },
-        });
       }
 
-      // 2. Validate & Reserve Shelter
+      // 2. Database-Enforced Atomic Reservation for Shelter
       if (shelterId) {
-        const shelter = await tx.resource.findUnique({
-          where: { id: shelterId },
-        });
+        // Enforce shelter headroom atomically in SQL to prevent oversubscription
+        const shelterAffected = await tx.$executeRaw`
+          UPDATE Resource
+          SET reservedCapacity = reservedCapacity + ${caseReq.groupSize}
+          WHERE id = ${shelterId}
+            AND isActive = 1
+            AND (verificationStatus = 'verified' OR verificationStatus = 'partner_verified')
+            AND (totalCapacity - reservedCapacity - currentOccupancy) >= ${caseReq.groupSize}
+        `;
 
-        if (!shelter || !shelter.isActive) {
-          throw new Error(`Shelter ${shelterId} is not active.`);
-        }
-
-        if (shelter.verificationStatus !== "verified" && shelter.verificationStatus !== "partner_verified") {
-          throw new Error(`Safety violation: Shelter ${shelter.name} is unverified and cannot be assigned.`);
-        }
-
-        const availCap = shelter.totalCapacity - shelter.reservedCapacity - shelter.currentOccupancy;
-        if (availCap < caseReq.groupSize) {
+        if (shelterAffected === 0) {
           throw new Error(
-            `Shelter ${shelter.name} capacity exceeded (Available: ${availCap}, Needed: ${caseReq.groupSize}).`
+            `Shelter headroom capacity exceeded, unverified, or unavailable for reservation.`
           );
         }
-
-        await tx.resource.update({
-          where: { id: shelterId },
-          data: { reservedCapacity: { increment: caseReq.groupSize } },
-        });
       }
 
-      // 3. Validate Responder
+      // 3. Database-Enforced Atomic Lock for Responder Unit
       if (responderId) {
-        const responder = await tx.resource.findUnique({
-          where: { id: responderId },
-          include: { responderDetails: true },
-        });
+        const responderAffected = await tx.$executeRaw`
+          UPDATE ResponderDetail
+          SET currentStatus = 'en_route'
+          WHERE resourceId = ${responderId}
+            AND currentStatus = 'available'
+        `;
 
-        if (!responder || !responder.isActive) {
-          throw new Error(`Responder ${responderId} is not active.`);
+        if (responderAffected === 0) {
+          throw new Error(`Responder unit ${responderId} is currently committed or unavailable.`);
         }
-
-        if (responder.verificationStatus !== "verified" && responder.verificationStatus !== "partner_verified") {
-          throw new Error(`Safety violation: Responder team is unverified.`);
-        }
-
-        await tx.responderDetail.update({
-          where: { resourceId: responderId },
-          data: { currentStatus: "en_route" },
-        });
       }
 
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const assignmentId = `ASG-2026-${randomSuffix}`;
 
-      // Create Assignment record
+      // Create Assignment record (enforced unique requestId at database schema level)
       const createdAssignment = await tx.assignment.create({
         data: {
           id: assignmentId,
@@ -134,7 +117,7 @@ export async function POST(request: NextRequest) {
         data: { status: "assigned" },
       });
 
-      // Log to Case Timeline
+      // Log to Immutable Case Timeline
       await tx.caseTimeline.create({
         data: {
           requestId: caseReq.id,
@@ -147,6 +130,7 @@ export async function POST(request: NextRequest) {
             shelterId,
             responderId,
             seatsReserved: caseReq.groupSize,
+            idempotencyKey: idempotencyKey || null,
           }),
         },
       });

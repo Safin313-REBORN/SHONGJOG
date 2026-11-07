@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const VALID_STATE_TRANSITIONS: Record<string, string[]> = {
+  assigned: ["accept", "decline"],
+  accepted: ["en_route", "decline", "unable_to_assist"],
+  in_progress: ["arrived", "unable_to_assist"],
+  arrived: ["complete", "unable_to_assist"],
+  completed: [],
+  declined: [],
+  failed: ["accept", "decline"],
+};
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -8,7 +18,7 @@ export async function POST(
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const { action, reason, responderName = "Field Responder" } = body;
+    const { action, reason, responderName = "Field Responder", responderId } = body;
 
     const assignment = await prisma.assignment.findUnique({
       where: { id },
@@ -22,6 +32,40 @@ export async function POST(
 
     if (!assignment) {
       return NextResponse.json({ success: false, error: "Assignment not found." }, { status: 404 });
+    }
+
+    // Authorization check: Verify responder identity if provided
+    if (assignment.responderId && responderId && assignment.responderId !== responderId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Assignment is designated for a different responder unit." },
+        { status: 403 }
+      );
+    }
+
+    // Idempotency: If already in target status, return cleanly without duplicating decrements
+    const isAlreadyAccepted = action === "accept" && assignment.status === "accepted";
+    const isAlreadyEnRoute = action === "en_route" && assignment.status === "in_progress";
+    const isAlreadyArrived = action === "arrived" && assignment.status === "arrived";
+    const isAlreadyCompleted = action === "complete" && assignment.status === "completed";
+
+    if (isAlreadyAccepted || isAlreadyEnRoute || isAlreadyArrived || isAlreadyCompleted) {
+      return NextResponse.json({
+        success: true,
+        data: { assignmentStatus: assignment.status, requestStatus: assignment.request.status },
+        idempotent: true,
+      });
+    }
+
+    // State Machine Validation: Prevent illegal out-of-order transitions
+    const allowedActions = VALID_STATE_TRANSITIONS[assignment.status] || [];
+    if (!allowedActions.includes(action)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Illegal state transition: Cannot perform action '${action}' on assignment with current status '${assignment.status}'.`,
+        },
+        { status: 400 }
+      );
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -44,24 +88,27 @@ export async function POST(
           newRequestStatus = "matching";
           eventType = "declined";
 
-          // Release reserved capacities back
+          // Release reserved capacities back atomically
           if (assignment.vehicleId) {
-            await tx.resource.update({
-              where: { id: assignment.vehicleId },
-              data: { reservedCapacity: { decrement: assignment.request.groupSize } },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
+              WHERE id = ${assignment.vehicleId}
+            `;
           }
           if (assignment.shelterId) {
-            await tx.resource.update({
-              where: { id: assignment.shelterId },
-              data: { reservedCapacity: { decrement: assignment.request.groupSize } },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
+              WHERE id = ${assignment.shelterId}
+            `;
           }
           if (assignment.responderId) {
-            await tx.responderDetail.update({
-              where: { resourceId: assignment.responderId },
-              data: { currentStatus: "available" },
-            });
+            await tx.$executeRaw`
+              UPDATE ResponderDetail
+              SET currentStatus = 'available'
+              WHERE resourceId = ${assignment.responderId}
+            `;
           }
 
           await tx.assignment.update({
@@ -107,29 +154,28 @@ export async function POST(
           newRequestStatus = "completed";
           eventType = "completed";
 
-          // Settle reservations: deduct reserved, increment shelter occupancy, release vehicle
+          // Settle reservations atomically: deduct reserved, increment shelter occupancy, release vehicle
           if (assignment.shelterId) {
-            await tx.resource.update({
-              where: { id: assignment.shelterId },
-              data: {
-                reservedCapacity: { decrement: assignment.request.groupSize },
-                currentOccupancy: { increment: assignment.request.groupSize },
-              },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize}),
+                  currentOccupancy = currentOccupancy + ${assignment.request.groupSize}
+              WHERE id = ${assignment.shelterId}
+            `;
           }
           if (assignment.vehicleId) {
-            await tx.resource.update({
-              where: { id: assignment.vehicleId },
-              data: {
-                reservedCapacity: { decrement: assignment.request.groupSize },
-              },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
+              WHERE id = ${assignment.vehicleId}
+            `;
           }
           if (assignment.responderId) {
-            await tx.responderDetail.update({
-              where: { resourceId: assignment.responderId },
-              data: { currentStatus: "available" },
-            });
+            await tx.$executeRaw`
+              UPDATE ResponderDetail
+              SET currentStatus = 'available'
+              WHERE resourceId = ${assignment.responderId}
+            `;
           }
 
           await tx.assignment.update({
@@ -147,24 +193,27 @@ export async function POST(
           newRequestStatus = "pending_review";
           eventType = "unable_to_assist";
 
-          // Release reservations for escalation
+          // Release reservations for escalation atomically
           if (assignment.vehicleId) {
-            await tx.resource.update({
-              where: { id: assignment.vehicleId },
-              data: { reservedCapacity: { decrement: assignment.request.groupSize } },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
+              WHERE id = ${assignment.vehicleId}
+            `;
           }
           if (assignment.shelterId) {
-            await tx.resource.update({
-              where: { id: assignment.shelterId },
-              data: { reservedCapacity: { decrement: assignment.request.groupSize } },
-            });
+            await tx.$executeRaw`
+              UPDATE Resource
+              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
+              WHERE id = ${assignment.shelterId}
+            `;
           }
           if (assignment.responderId) {
-            await tx.responderDetail.update({
-              where: { resourceId: assignment.responderId },
-              data: { currentStatus: "available" },
-            });
+            await tx.$executeRaw`
+              UPDATE ResponderDetail
+              SET currentStatus = 'available'
+              WHERE resourceId = ${assignment.responderId}
+            `;
           }
 
           await tx.assignment.update({
