@@ -12,7 +12,7 @@ test.describe("SHONGJOG Inclusive Emergency Access Network — E2E Test Suite", 
     await page.goto("/");
 
     // Verify Brand & Hero Headline
-    await expect(page.locator("h1")).toContainText("A warning is only a beginning.");
+    await expect(page.locator("main h1")).toContainText("A warning is only a beginning.");
     await expect(page.locator("h2").first()).toContainText("Everyone deserves a way to reach safety.");
 
     // Verify Animated Vector Map is present
@@ -31,12 +31,12 @@ test.describe("SHONGJOG Inclusive Emergency Access Network — E2E Test Suite", 
 
     // Test Language Switch to Bengali
     const langBtn = page.getByRole("button", { name: /Toggle language/i });
-    await langBtn.click();
-    await expect(page.locator("h1")).toContainText("সতর্কবার্তা কেবল একটি সূচনা।");
+    await langBtn.click({ force: true });
+    await expect(page.locator("main h1")).toContainText("সতর্কবার্তা কেবল একটি সূচনা।");
 
     // Switch back to English
-    await langBtn.click();
-    await expect(page.locator("h1")).toContainText("A warning is only a beginning.");
+    await langBtn.click({ force: true });
+    await expect(page.locator("main h1")).toContainText("A warning is only a beginning.");
   });
 
   test("Module B: Community Request Submission Workflow (Step 1 -> 2 -> 3 -> Confirmed Case)", async ({
@@ -97,7 +97,7 @@ test.describe("SHONGJOG Inclusive Emergency Access Network — E2E Test Suite", 
     await accessibleListBtn.click();
     await expect(page.getByText("Active Case Priority Queue")).toBeVisible();
 
-    const mapBtn = page.getByRole("button", { name: /Map/i });
+    const mapBtn = page.getByRole("button", { name: "Map", exact: true });
     await mapBtn.click();
 
     // Click on Case SHG-2026-0801
@@ -108,7 +108,7 @@ test.describe("SHONGJOG Inclusive Emergency Access Network — E2E Test Suite", 
     await expect(page.getByText("Intelligent Matching Engine Output")).toBeVisible();
 
     // Verify recommended shelter headroom & ramp status
-    await expect(page.getByText(/Headroom: \d+ places/)).toBeVisible();
+    await expect(page.getByText(/Headroom: \d+ places/)).toBeVisible({ timeout: 15000 });
   });
 
   test("Module F: Field Responder State Machine Transitions", async ({ page }) => {

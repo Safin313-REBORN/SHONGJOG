@@ -814,7 +814,6 @@ export default function OperationsCenterPage() {
               </select>
             </div>
           </div>
-          </div>
 
           {/* Cases List */}
           <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
@@ -1207,7 +1206,8 @@ export default function OperationsCenterPage() {
           )}
         </div>
       </div>
-        </div>
-      </div>
+    </div>
+  </div>
+</div>
   );
 }
