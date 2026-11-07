@@ -182,4 +182,24 @@ Read the annotated literature review at [`docs/RESEARCH.md`](docs/RESEARCH.md).
 - **Data Minimization:** No clinical diagnostic records are collected or shared. Responders receive only functional physical accommodation instructions.
 - **Human Accountability:** AI provides classification and hypothesis extraction; deterministic algorithms evaluate physical constraints; **authorized human coordinators make consequential dispatch decisions.**
 
+---
+
+## 9. Operational Directive for Antigravity
+
 # SHONGJOG-PLATFORM-OPERATIONAL-DIRECTIVE-FOR-ANTIGRAVITY
+
+This document establishes the official operational directive and architectural guidelines for maintaining and extending **SHONGJOG (সংযোগ)**.
+
+### Non-Negotiable Engineering Standards:
+1. **Preserve Original Google Maps Geospatial GIS:**
+   - Never replace embedded Google Map views with simulated canvas or static pictures. The embedded Google Map (`https://maps.google.com/maps?q=${lat},${lng}&output=embed`) and official navigation links (`https://www.google.com/maps/dir/?api=1&...`) must remain active.
+2. **Preserve Active Problem-Solving Capabilities:**
+   - Keep the live triage and route calculator (`LiveRouteCalculator.tsx`) active on the landing page. Never reduce the interface to informational text cards only. All simulated dispatches must execute atomic capacity reservation locks in the database.
+3. **Preserve Strict 100% Bilingual Parity:**
+   - Maintain exact parity between English and Bengali interfaces. When adding or modifying strings, update both dictionaries in `src/lib/i18n.ts` using `useTranslation()`. Never leave hardcoded English strings.
+4. **Enforce 12-Viewport Responsiveness:**
+   - Maintain zero horizontal document overflow (`scrollWidth <= innerWidth`) across all 12 viewports (320px, 360px, 375px, 390px, 430px, 768px, 820px, 1024px, 1280px, 1366px, 1440px, 1920px). Verify via `npx playwright test`.
+5. **Zero-Error Automated Verification:**
+   - All 28 Vitest unit/integration tests and 40 Playwright E2E tests must pass 100% with 0 errors.
+6. **Clean Source Packaging Limit:**
+   - Ensure the submission archive (`shongjog-submission.zip`) generated via `scripts/package-clean-source.sh` strictly adheres to $\le 5,000,000$ bytes ($\le 5.0$ MB) with 0 compression errors.
