@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       });
 
       return created;
-    });
+    }, { maxWait: 15000, timeout: 30000 });
 
     return NextResponse.json({
       success: true,

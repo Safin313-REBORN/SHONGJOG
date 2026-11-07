@@ -45,14 +45,13 @@ export async function POST(request: NextRequest) {
     const assignmentResult = await prisma.$transaction(async (tx) => {
       // 1. Database-Enforced Atomic Reservation for Vehicle
       if (vehicleId) {
-        // Enforce capacity headroom atomically in SQL to prevent race conditions
         const vehicleAffected = await tx.$executeRaw`
-          UPDATE Resource
-          SET reservedCapacity = reservedCapacity + ${caseReq.groupSize}
-          WHERE id = ${vehicleId}
-            AND isActive = 1
-            AND (verificationStatus = 'verified' OR verificationStatus = 'partner_verified')
-            AND (totalCapacity - reservedCapacity - currentOccupancy) >= ${caseReq.groupSize}
+          UPDATE "Resource"
+          SET "reservedCapacity" = "reservedCapacity" + ${caseReq.groupSize}
+          WHERE "id" = ${vehicleId}
+            AND "isActive" = true
+            AND ("verificationStatus" = 'verified' OR "verificationStatus" = 'partner_verified')
+            AND ("totalCapacity" - "reservedCapacity" - "currentOccupancy") >= ${caseReq.groupSize}
         `;
 
         if (vehicleAffected === 0) {
@@ -64,14 +63,13 @@ export async function POST(request: NextRequest) {
 
       // 2. Database-Enforced Atomic Reservation for Shelter
       if (shelterId) {
-        // Enforce shelter headroom atomically in SQL to prevent oversubscription
         const shelterAffected = await tx.$executeRaw`
-          UPDATE Resource
-          SET reservedCapacity = reservedCapacity + ${caseReq.groupSize}
-          WHERE id = ${shelterId}
-            AND isActive = 1
-            AND (verificationStatus = 'verified' OR verificationStatus = 'partner_verified')
-            AND (totalCapacity - reservedCapacity - currentOccupancy) >= ${caseReq.groupSize}
+          UPDATE "Resource"
+          SET "reservedCapacity" = "reservedCapacity" + ${caseReq.groupSize}
+          WHERE "id" = ${shelterId}
+            AND "isActive" = true
+            AND ("verificationStatus" = 'verified' OR "verificationStatus" = 'partner_verified')
+            AND ("totalCapacity" - "reservedCapacity" - "currentOccupancy") >= ${caseReq.groupSize}
         `;
 
         if (shelterAffected === 0) {
@@ -84,10 +82,10 @@ export async function POST(request: NextRequest) {
       // 3. Database-Enforced Atomic Lock for Responder Unit
       if (responderId) {
         const responderAffected = await tx.$executeRaw`
-          UPDATE ResponderDetail
-          SET currentStatus = 'en_route'
-          WHERE resourceId = ${responderId}
-            AND currentStatus = 'available'
+          UPDATE "ResponderDetail"
+          SET "currentStatus" = 'en_route'
+          WHERE "resourceId" = ${responderId}
+            AND "currentStatus" = 'available'
         `;
 
         if (responderAffected === 0) {
@@ -136,7 +134,7 @@ export async function POST(request: NextRequest) {
       });
 
       return createdAssignment;
-    });
+    }, { maxWait: 15000, timeout: 30000 });
 
     return NextResponse.json({
       success: true,

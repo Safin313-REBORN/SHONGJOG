@@ -90,25 +90,34 @@ export async function POST(
 
           // Release reserved capacities back atomically
           if (assignment.vehicleId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
-              WHERE id = ${assignment.vehicleId}
-            `;
+            const v = await tx.resource.findUnique({
+              where: { id: assignment.vehicleId },
+              select: { reservedCapacity: true },
+            });
+            if (v) {
+              await tx.resource.update({
+                where: { id: assignment.vehicleId },
+                data: { reservedCapacity: Math.max(0, v.reservedCapacity - assignment.request.groupSize) },
+              });
+            }
           }
           if (assignment.shelterId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
-              WHERE id = ${assignment.shelterId}
-            `;
+            const s = await tx.resource.findUnique({
+              where: { id: assignment.shelterId },
+              select: { reservedCapacity: true },
+            });
+            if (s) {
+              await tx.resource.update({
+                where: { id: assignment.shelterId },
+                data: { reservedCapacity: Math.max(0, s.reservedCapacity - assignment.request.groupSize) },
+              });
+            }
           }
           if (assignment.responderId) {
-            await tx.$executeRaw`
-              UPDATE ResponderDetail
-              SET currentStatus = 'available'
-              WHERE resourceId = ${assignment.responderId}
-            `;
+            await tx.responderDetail.updateMany({
+              where: { resourceId: assignment.responderId },
+              data: { currentStatus: "available" },
+            });
           }
 
           await tx.assignment.update({
@@ -156,26 +165,37 @@ export async function POST(
 
           // Settle reservations atomically: deduct reserved, increment shelter occupancy, release vehicle
           if (assignment.shelterId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize}),
-                  currentOccupancy = currentOccupancy + ${assignment.request.groupSize}
-              WHERE id = ${assignment.shelterId}
-            `;
+            const s = await tx.resource.findUnique({
+              where: { id: assignment.shelterId },
+              select: { reservedCapacity: true, currentOccupancy: true },
+            });
+            if (s) {
+              await tx.resource.update({
+                where: { id: assignment.shelterId },
+                data: {
+                  reservedCapacity: Math.max(0, s.reservedCapacity - assignment.request.groupSize),
+                  currentOccupancy: s.currentOccupancy + assignment.request.groupSize,
+                },
+              });
+            }
           }
           if (assignment.vehicleId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
-              WHERE id = ${assignment.vehicleId}
-            `;
+            const v = await tx.resource.findUnique({
+              where: { id: assignment.vehicleId },
+              select: { reservedCapacity: true },
+            });
+            if (v) {
+              await tx.resource.update({
+                where: { id: assignment.vehicleId },
+                data: { reservedCapacity: Math.max(0, v.reservedCapacity - assignment.request.groupSize) },
+              });
+            }
           }
           if (assignment.responderId) {
-            await tx.$executeRaw`
-              UPDATE ResponderDetail
-              SET currentStatus = 'available'
-              WHERE resourceId = ${assignment.responderId}
-            `;
+            await tx.responderDetail.updateMany({
+              where: { resourceId: assignment.responderId },
+              data: { currentStatus: "available" },
+            });
           }
 
           await tx.assignment.update({
@@ -195,25 +215,34 @@ export async function POST(
 
           // Release reservations for escalation atomically
           if (assignment.vehicleId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
-              WHERE id = ${assignment.vehicleId}
-            `;
+            const v = await tx.resource.findUnique({
+              where: { id: assignment.vehicleId },
+              select: { reservedCapacity: true },
+            });
+            if (v) {
+              await tx.resource.update({
+                where: { id: assignment.vehicleId },
+                data: { reservedCapacity: Math.max(0, v.reservedCapacity - assignment.request.groupSize) },
+              });
+            }
           }
           if (assignment.shelterId) {
-            await tx.$executeRaw`
-              UPDATE Resource
-              SET reservedCapacity = MAX(0, reservedCapacity - ${assignment.request.groupSize})
-              WHERE id = ${assignment.shelterId}
-            `;
+            const s = await tx.resource.findUnique({
+              where: { id: assignment.shelterId },
+              select: { reservedCapacity: true },
+            });
+            if (s) {
+              await tx.resource.update({
+                where: { id: assignment.shelterId },
+                data: { reservedCapacity: Math.max(0, s.reservedCapacity - assignment.request.groupSize) },
+              });
+            }
           }
           if (assignment.responderId) {
-            await tx.$executeRaw`
-              UPDATE ResponderDetail
-              SET currentStatus = 'available'
-              WHERE resourceId = ${assignment.responderId}
-            `;
+            await tx.responderDetail.updateMany({
+              where: { resourceId: assignment.responderId },
+              data: { currentStatus: "available" },
+            });
           }
 
           await tx.assignment.update({
@@ -247,7 +276,7 @@ export async function POST(
       });
 
       return { assignmentStatus: newAssignmentStatus, requestStatus: newRequestStatus };
-    });
+    }, { maxWait: 15000, timeout: 30000 });
 
     return NextResponse.json({
       success: true,
