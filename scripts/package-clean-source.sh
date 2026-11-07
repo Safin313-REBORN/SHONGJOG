@@ -41,12 +41,23 @@ zip -r -q "$OUTPUT_ZIP" . \
   -x "node_modules/*" \
   -x ".next/*" \
   -x ".git/*" \
+  -x ".vercel/*" \
   -x "test-results/*" \
   -x "playwright-report/*" \
   -x "*.log" \
   -x ".env" \
   -x ".env.local" \
+  -x ".env.production*" \
+  -x ".env.development*" \
+  -x ".env.test*" \
+  -x ".env.staging*" \
   -x ".env.*.local" \
+  -x "*.pem" \
+  -x "*.key" \
+  -x "*.cert" \
+  -x "*.db" \
+  -x "*.db-journal" \
+  -x "*.tsbuildinfo" \
   -x "*/__pycache__/*" \
   -x "**/.DS_Store" \
   -x "shongjog-submission.zip"

@@ -5,7 +5,9 @@
 
 [![CTRL-V 2026](https://img.shields.io/badge/Hackathon-CTRL--V%202026-teal?style=for-the-badge)](https://ctrl-v-hackathon-31831.devpost.com/)
 [![WCAG 2.2 AA](https://img.shields.io/badge/Accessibility-WCAG%202.2%20AA-159B82?style=for-the-badge)](https://www.w3.org/TR/WCAG22/)
-[![Tests](https://img.shields.io/badge/Automated%20Tests-38%2F38%20Passed-63DEC2?style=for-the-badge)](docs/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/Automated%20Tests-28%20Vitest%20%7C%2040%20Playwright-63DEC2?style=for-the-badge)](docs/TEST_REPORT.md)
+[![Vercel Production](https://img.shields.io/badge/Vercel-shongjog--eight.vercel.app-black?style=for-the-badge&logo=vercel)](https://shongjog-eight.vercel.app)
+[![Database](https://img.shields.io/badge/Database-Neon%20PostgreSQL-00E599?style=for-the-badge&logo=postgresql)](https://neon.tech)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict%20Mode-blue?style=for-the-badge)](https://www.typescriptlang.org/)
 
 ---
@@ -85,7 +87,7 @@ flowchart LR
 - **Framework:** [Next.js 16](https://nextjs.org/) (App Router), React 19, Strict TypeScript
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/) with carefully controlled emergency color tokens
 - **Design Tokens:** Midnight Navy (`#091E2C`), Deep Ocean (`#103B48`), Primary Teal (`#0B766E`), Emerald (`#159B82`), Aqua Accent (`#63DEC2`), Critical Coral (`#D9534F`), Safety Amber (`#ECAF42`)
-- **Database & ORM:** [Prisma ORM](https://www.prisma.io/) with SQLite local file storage and atomic transactional boundaries
+- **Database & ORM:** [Prisma ORM](https://www.prisma.io/) with [Neon Serverless PostgreSQL](https://neon.tech/) and database-enforced atomic transactional boundaries
 - **AI & NLP:** Adaption Labs Structured Extraction API + Deterministic Heuristic Regex Classifier
 - **Icons & Motion:** Lucide Icons, Framer Motion
 - **Quality Assurance:** [Vitest](https://vitest.dev/) (unit & integration), [Playwright](https://playwright.dev/) (multi-device E2E browser tests)
@@ -95,28 +97,32 @@ flowchart LR
 ## 4. Quick Start & Installation
 
 ### Prerequisites
-- Node.js `v20.x` or `v22.x`
-- npm `v10.x`
+- Node.js `v22.x` (LTS recommended) or `v20.x+`
+- npm `v10.x+`
 - Python `3.10+` (optional, for ML evaluation script)
 
 ### Setup Instructions
 
 ```bash
 # 1. Clone repository and navigate to project directory
-git clone https://github.com/your-username/shongjog.git
+git clone https://github.com/Safin313-REBORN/SHONGJOG-PLATFORM-OPERATIONAL-DIRECTIVE-FOR-ANTIGRAVITY.git shongjog
 cd shongjog
 
 # 2. Install dependencies
 npm install --legacy-peer-deps
 
-# 3. Configure environment variables (optional for live AI; defaults to simulated fallback)
+# 3. Configure environment variables
+# Copy template and provide your Neon PostgreSQL connection string in DATABASE_URL
 cp .env.example .env
 
-# 4. Initialize and seed SQLite database with Dacope simulation scenario
+# 4. Generate Prisma Client and synchronize schema with PostgreSQL
+npx prisma generate
 npx prisma db push
+
+# 5. Seed database with Dacope simulation scenario
 npx tsx src/lib/seed/seed.ts
 
-# 5. Start development server
+# 6. Start development server
 npm run dev
 ```
 
@@ -146,10 +152,10 @@ The platform is pre-seeded with a synthetic coastal flood scenario based on real
 SHONGJOG enforces a strict quality gate with 100% test pass rate across unit, integration, and E2E browser suites:
 
 ```bash
-# Run Vitest unit & integration tests (18 tests)
+# Run Vitest unit & integration tests (28 test cases across 4 test suites)
 npx vitest run
 
-# Run Playwright E2E browser tests across Desktop, Tablet, and Mobile (20 tests)
+# Run Playwright E2E browser tests across Desktop, Tablet, and Mobile (40 test runs across 4 viewports)
 npx playwright test
 
 # Run Adaption AI multilingual evaluation benchmark

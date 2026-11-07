@@ -1,13 +1,14 @@
-# SHONGJOG — Database Schema & Data Dictionary (V4)
-**Engine:** SQLite (WAL mode) / PostgreSQL-compatible  
-**ORM:** Prisma 6.4.1  
-**Schema File:** `prisma/schema.prisma`
+# SHONGJOG (সংযোগ) — Database Schema & Data Dictionary (V4.2.1)
+**Database Engine:** Neon Serverless PostgreSQL (`provider = "postgresql"`)  
+**ORM:** Prisma ORM 6.4.1  
+**Schema File:** `prisma/schema.prisma`  
+**Deployment Target:** Vercel Serverless with pgbouncer connection pooling
 
 ---
 
 ## 1. Entity Relationship Overview
 
-The SHONGJOG relational model models 8 primary entities designed for referential integrity, concurrency control, and auditability:
+The SHONGJOG relational model comprises 10 primary entities designed for referential integrity, concurrency control, and auditability:
 
 ```mermaid
 erDiagram
@@ -22,9 +23,11 @@ erDiagram
     Resource ||--o{ Assignment : assigned_as_shl
     Resource ||--o{ Assignment : assigned_as_rsp
 
+    AlertEvent ||--o{ CaseTimeline : contextualizes
+
     AssistanceRequest {
         string id PK "SHG-2026-XXXX"
-        string status "intake_received | ai_parsed | assigned | en_route | arrived | completed | cancelled"
+        string status "pending_review | assigned | en_route | arrived | completed | cancelled"
         string urgency "critical | urgent | routine"
         string language "bn | en | banglish"
         int groupSize "1 to 20"
@@ -58,38 +61,6 @@ erDiagram
         float longitude
         string contactInfo
         string notes
-        string verificationSource
-        datetime lastVerifiedAt
-    }
-
-    VehicleDetail {
-        string id PK
-        string resourceId FK
-        string vehicleType "van | boat | ambulance | rickshaw"
-        boolean wheelchairAccessible
-        int wheelchairCapacity
-        boolean stretcherCapable
-        string driverName
-    }
-
-    ShelterDetail {
-        string id PK
-        string resourceId FK
-        boolean stepFreeAccess
-        boolean rampAvailable
-        boolean accessibleToilets
-        boolean powerBackup
-        boolean separateFemaleSpace
-        string managerName
-    }
-
-    ResponderDetail {
-        string id PK
-        string resourceId FK
-        string organization "Cyclone Preparedness Programme (CPP) | Red Crescent"
-        string badgeNumber
-        string skillsJson "['first_aid', 'sign_language', 'stretcher_carry']"
-        string currentStatus "available | assigned | en_route | off_duty"
     }
 
     Assignment {
@@ -99,40 +70,57 @@ erDiagram
         string shelterId FK
         string responderId FK
         string status "assigned | accepted | in_progress | arrived | completed | declined | failed"
-        string assignedByCoordinator
-        string coordinatorNotes
         datetime assignedAt
-        datetime acceptedAt
-        datetime arrivedAt
         datetime completedAt
-        string declineReason
-    }
-
-    CaseTimeline {
-        string id PK
-        string requestId FK
-        string eventType "created | parsed | assigned | accepted | en_route | arrived | completed"
-        string actorRole "citizen | ai_parser | coordinator | responder"
-        string actorName
-        datetime timestamp
-        string detailsJson
     }
 ```
 
 ---
 
-## 2. Field Specifications & Integrity Constraints
+## 2. Serverless PostgreSQL Architecture & Concurrency Control
 
-### `AssistanceRequest`
-- `id`: Unique identifier formatted as `SHG-2026-XXXX` for human radio dispatch clarity.
-- `status`: Finite state machine enforcing progressive case triage.
-- `groupSize`: Positive integer representing the total evacuees to reserve space for.
-- `rawDescription`: Immutable citizen transcript preserving original colloquial voice/text.
+In high-concurrency disaster scenarios, simultaneous coordinators and responders update shared capacities (e.g. shelter beds, wheelchair seating). 
 
-### `Resource`
-- `totalCapacity`: Physical ceiling of beds or seats.
-- `reservedCapacity`: Incrementally locked during coordinator dispatch; decremented if responder declines.
-- `currentOccupancy`: Incrementally marked upon confirmed safe arrival at shelter.
-- **Headroom Equation:**
-  $$\text{Headroom} = \text{totalCapacity} - \text{reservedCapacity} - \text{currentOccupancy}$$
+### Atomic Resource Reservation
+To guarantee that resources are never over-allocated or assigned beyond capacity, SHONGJOG executes atomic database transactions in PostgreSQL with quoted identifiers:
 
+```typescript
+// Atomically deduct and reserve capacity during coordinator approval
+const vehicleAffected = await tx.$executeRaw`
+  UPDATE "Resource"
+  SET "reservedCapacity" = "reservedCapacity" + ${caseReq.groupSize}
+  WHERE "id" = ${vehicleId}
+    AND "isActive" = true
+    AND ("verificationStatus" = 'verified' OR "verificationStatus" = 'partner_verified')
+    AND ("totalCapacity" - "reservedCapacity" - "currentOccupancy") >= ${caseReq.groupSize}
+`;
+
+if (vehicleAffected === 0) {
+  throw new Error("Vehicle capacity exceeded, unverified, or unavailable for reservation.");
+}
+```
+
+### WAN-Resilient Transaction Timeouts
+Because serverless functions communicate with remote PostgreSQL clusters (e.g., AWS us-east-1), interactive transactions configure extended timeouts to prevent premature P2028 closing:
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  // atomic reservation logic
+}, { maxWait: 15000, timeout: 30000 });
+```
+
+---
+
+## 3. Migration Management Strategy (Zero Data Loss)
+
+SHONGJOG uses Prisma ORM with Neon Serverless PostgreSQL. 
+
+### Recommended Strategy: `npx prisma db push`
+- **Safest Approach:** `npx prisma db push` synchronizes the `schema.prisma` definitions directly to Neon PostgreSQL.
+- **Why it is safer than `prisma migrate dev`:** `prisma migrate dev` requires a separate shadow database which is unsupported by serverless pgbouncer poolers and can trigger accidental `Reset database?` prompts that erase live tables.
+- **Data Protection:** `prisma db push` safely applies non-destructive schema additions (e.g., adding indexes or optional fields) without wiping table data.
+
+### Strict Operational Directive:
+> [!CAUTION]
+> **Never run `npx prisma migrate reset` against production Neon PostgreSQL.**
+> To re-seed baseline demonstration data safely without altering table structures, use `npx tsx src/lib/seed/seed.ts` or trigger `POST /api/demo/reset`.
