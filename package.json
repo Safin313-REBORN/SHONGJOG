@@ -30,7 +30,7 @@
     "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@types/google.maps": "^3.66.9",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
