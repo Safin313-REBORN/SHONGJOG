@@ -45,6 +45,10 @@ next-env.d.ts
 *.db
 *.db-journal
 
+# python cache
+__pycache__/
+*.py[cod]
+
 # Playwright test results
 test-results/
 playwright-report/
